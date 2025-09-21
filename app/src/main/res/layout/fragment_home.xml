@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_light">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header with gradient background -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="280dp"
+            android:background="@drawable/gradient_purple_background"
+            android:padding="24dp">
+
+            <!-- Search icon in circle -->
+            <View
+                android:id="@+id/search_circle"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="40dp"
+                android:background="@drawable/circle_white_background" />
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_centerInParent="true"
+                android:layout_alignTop="@id/search_circle"
+                android:layout_alignBottom="@id/search_circle"
+                android:layout_centerHorizontal="true"
+                android:src="@drawable/ic_search_blue"
+                android:layout_marginTop="60dp" />
+
+            <!-- Title and subtitle -->
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/search_circle"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="24dp"
+                android:text="@string/lost_and_found_title"
+                android:textColor="@color/white"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/tv_title"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="8dp"
+                android:text="@string/lost_and_found_subtitle"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+        </RelativeLayout>
+
+        <!-- Search bar -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:layout_marginTop="-30dp"
+            app:cardCornerRadius="25dp"
+            app:cardElevation="4dp">
+
+            <EditText
+                android:id="@+id/et_search"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:background="@android:color/transparent"
+                android:drawableStart="@drawable/ic_search_gray"
+                android:drawablePadding="12dp"
+                android:hint="@string/search_hint"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:textColorHint="@color/text_hint" />
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- Report buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:orientation="horizontal"
+            android:weightSum="2">
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_report_lost"
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/primary_purple"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/ic_add_white"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/report_lost"
+                        android:textColor="@color/white"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_report_found"
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/card_background"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/ic_check_purple"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/report_found"
+                        android:textColor="@color/primary_purple"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+
+        <!-- Filter tabs -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_all_items"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:background="@drawable/tab_selected_background"
+                android:gravity="center"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="All (6)"
+                android:textColor="@color/white"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tv_lost_items"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/tab_unselected_background"
+                android:gravity="center"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="Lost (2)"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tv_found_items"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/tab_unselected_background"
+                android:gravity="center"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="Found (3)"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <!-- Items section header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/all_items_title"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/items_count_background"
+                android:paddingStart="12dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="4dp"
+                android:text="6 items"
+                android:textColor="@color/primary_purple"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- Items RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view_items"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp" />
+
+    </LinearLayout>
+
+</ScrollView>
