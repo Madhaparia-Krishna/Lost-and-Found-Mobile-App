@@ -122,10 +122,23 @@ class Login : AppCompatActivity() {
             }
     }
 
-    private fun navigateToDashboard() { // Assuming MainActivity is DashboardActivity
-        val intent = Intent(this, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
+    private fun navigateToDashboard() {
+        val currentUser = auth.currentUser
+        Log.d(TAG, "Navigating to dashboard for user: ${currentUser?.email}")
+        
+        if (currentUser?.email == "admin@gmail.com") {
+            // Navigate to admin dashboard
+            Log.d(TAG, "Navigating to admin dashboard")
+            val intent = Intent(this, com.example.loginandregistration.admin.AdminDashboardActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        } else {
+            // Navigate to regular user dashboard
+            Log.d(TAG, "Navigating to regular user dashboard")
+            val intent = Intent(this, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        }
         finish()
     }
 

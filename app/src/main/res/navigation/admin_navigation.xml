@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/admin_navigation"
+    app:startDestination="@+id/navigation_dashboard">
+
+    <fragment
+        android:id="@+id/navigation_dashboard"
+        android:name="com.example.loginandregistration.admin.fragments.AdminDashboardFragment"
+        android:label="Dashboard"
+        tools:layout="@layout/fragment_admin_dashboard" />
+
+    <fragment
+        android:id="@+id/navigation_items"
+        android:name="com.example.loginandregistration.admin.fragments.AdminItemsFragment"
+        android:label="Items"
+        tools:layout="@layout/fragment_admin_items" />
+
+    <fragment
+        android:id="@+id/navigation_users"
+        android:name="com.example.loginandregistration.admin.fragments.AdminUsersFragment"
+        android:label="Users"
+        tools:layout="@layout/fragment_admin_users" />
+
+    <fragment
+        android:id="@+id/navigation_donations"
+        android:name="com.example.loginandregistration.admin.fragments.AdminDonationsFragment"
+        android:label="Donations"
+        tools:layout="@layout/fragment_admin_donations" />
+
+    <fragment
+        android:id="@+id/navigation_activity_log"
+        android:name="com.example.loginandregistration.admin.fragments.AdminActivityLogFragment"
+        android:label="Activity Log"
+        tools:layout="@layout/fragment_admin_activity_log" />
+
+    <fragment
+        android:id="@+id/navigation_notifications"
+        android:name="com.example.loginandregistration.admin.fragments.AdminNotificationsFragment"
+        android:label="Notifications"
+        tools:layout="@layout/fragment_admin_notifications" />
+
+    <fragment
+        android:id="@+id/navigation_export"
+        android:name="com.example.loginandregistration.admin.fragments.AdminExportFragment"
+        android:label="Export Data"
+        tools:layout="@layout/fragment_admin_export" />
+
+</navigation>

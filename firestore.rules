@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == 'admin@gmail.com';
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user is moderator or admin
+    function isModerator() {
+      return isAuthenticated() && 
+             (request.auth.token.email == 'admin@gmail.com' ||
+              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'MODERATOR']);
+    }
+    
+    // Items collection rules
+    match /items/{itemId} {
+      // Anyone can read items (for browsing lost & found)
+      // But items with status DONATION_PENDING, DONATION_READY, or DONATED are admin-only
+      allow read: if isAuthenticated() && 
+                 (isModerator() || 
+                  !('status' in resource.data) ||
+                  !(resource.data.status in ['DONATION_PENDING', 'DONATION_READY', 'DONATED']));
+      
+      // Users can create items (report lost/found items)
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.userId;
+      
+      // Users can update their own items (basic fields only)
+      // Admins/moderators can update any item including status field
+      allow update: if isAuthenticated() && 
+                   (request.auth.uid == resource.data.userId && 
+                    !('status' in request.resource.data.diff(resource.data).affectedKeys()) ||
+                    isModerator());
+      
+      // Only admins can delete items
+      allow delete: if isAdmin();
+    }
+    
+    // Users collection rules
+    match /users/{userId} {
+      // Users can read their own profile, admins can read all
+      allow read: if isAuthenticated() && 
+                 (isOwner(userId) || isAdmin());
+      
+      // Users can create their own profile
+      allow create: if isAuthenticated() && isOwner(userId);
+      
+      // Users can update their own profile (basic fields only)
+      // Only admins can modify role, isBlocked, and admin-specific fields
+      allow update: if isAuthenticated() && 
+                   (isOwner(userId) && 
+                    !('role' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                    !('isBlocked' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                    !('blockReason' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                    !('blockedBy' in request.resource.data.diff(resource.data).affectedKeys()) ||
+                    isAdmin());
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Activities collection rules (legacy admin audit log)
+    match /activities/{activityId} {
+      // Only admins and moderators can read activities
+      allow read: if isModerator();
+      
+      // Only system (admin operations) can create activities
+      allow create: if isAdmin();
+      
+      // No updates or deletes allowed on activities (audit trail)
+      allow update, delete: if false;
+    }
+    
+    // Activity Logs collection rules (enhanced audit log)
+    match /activityLogs/{logId} {
+      // Only admins can read activity logs
+      allow read: if isAdmin();
+      
+      // Only admins can create activity logs (server-side writes)
+      allow create: if isAdmin();
+      
+      // No updates or deletes allowed on activity logs (immutable audit trail)
+      allow update, delete: if false;
+    }
+    
+    // Donations collection rules
+    match /donations/{donationId} {
+      // Only admins can read donations
+      allow read: if isAdmin();
+      
+      // Only admins can create/update donations
+      allow create, update: if isAdmin();
+      
+      // Only admins can delete donations
+      allow delete: if isAdmin();
+    }
+    
+    // Notifications collection rules
+    match /notifications/{notificationId} {
+      // Only admins can read notifications
+      allow read: if isAdmin();
+      
+      // Only admins can create/update notifications
+      allow create, update: if isAdmin();
+      
+      // Only admins can delete notifications
+      allow delete: if isAdmin();
+    }
+    
+    // Notification History collection rules
+    match /notificationHistory/{historyId} {
+      // Users can read their own notification history, admins can read all
+      allow read: if isAuthenticated() && 
+                 (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Only admins can create notification history entries
+      allow create: if isAdmin();
+      
+      // Only admins can update notification history (for tracking opens)
+      allow update: if isAdmin();
+      
+      // No deletes allowed on notification history
+      allow delete: if false;
+    }
+    
+    // Admin-specific collections
+    match /admin/{document=**} {
+      // Only admins can access admin collections
+      allow read, write: if isAdmin();
+    }
+    
+    // Default deny rule for any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
