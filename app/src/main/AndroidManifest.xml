@@ -39,6 +39,9 @@
             android:exported="false" /> <!-- Main Activity (Dashboard) -->
         <activity
             android:name=".MainActivity"
+            android:exported="true" />
+        <activity android:name=".SecurityMainActivity"/>
+
             android:exported="true"
             android:launchMode="singleTop">
             <!-- Deep link intent filter for notification actions -->

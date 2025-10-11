@@ -4,9 +4,11 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.PropertyName
 import java.io.Serializable
 import java.util.*
+import com.google.firebase.firestore.DocumentId
 
 data class LostFoundItem(
-    val id: String = "",
+
+    var id: String = "", // Important: To hold the Firestore document ID for updates
     val name: String = "",
     val description: String = "",
     val location: String = "",
@@ -17,6 +19,8 @@ data class LostFoundItem(
     @set:PropertyName("lost found")
     var isLost: Boolean = true, // true for lost, false for found
     
+    val isLost: Boolean = false,
+    var status: String = "Pending", // Add this field with a default value
     val userId: String = "",
     val userEmail: String = "",
     val imageUrl: String = "",
@@ -25,3 +29,5 @@ data class LostFoundItem(
     // Constructor for compatibility with Firestore
     constructor() : this("", "", "", "", "", true, "", "", "", Timestamp.now())
 }
+    val timestamp: Timestamp? = null
+)
