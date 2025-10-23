@@ -168,6 +168,48 @@ class Login : AppCompatActivity() {
         startActivity(intent)
         finish()
     }
+    
+    private fun checkUserRoleAndRedirect() {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            Log.w(TAG, "No user logged in")
+            return
+        }
+        
+        // Check if user is admin
+        if (currentUser.email == "admin@gmail.com") {
+            Log.d(TAG, "Admin user detected, navigating to admin dashboard")
+            navigateToAdminDashboard()
+        } else {
+            Log.d(TAG, "Regular user detected, navigating to main dashboard")
+            navigateToDashboard()
+        }
+    }
+    
+    private fun navigateToAdminDashboard() {
+        val intent = Intent(this, com.example.loginandregistration.admin.AdminDashboardActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
+    }
+    
+    private fun createNewUserDocument(userId: String, email: String?) {
+        val db = FirebaseFirestore.getInstance()
+        val userDoc = hashMapOf(
+            "email" to (email ?: ""),
+            "role" to "user",
+            "createdAt" to com.google.firebase.Timestamp.now()
+        )
+        
+        db.collection("users").document(userId)
+            .set(userDoc)
+            .addOnSuccessListener {
+                Log.d(TAG, "User document created successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error creating user document", e)
+            }
+    }
 
     override fun onStart() {
         super.onStart()
