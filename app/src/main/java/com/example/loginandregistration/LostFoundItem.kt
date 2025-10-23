@@ -7,7 +7,6 @@ import java.util.*
 import com.google.firebase.firestore.DocumentId
 
 data class LostFoundItem(
-
     var id: String = "", // Important: To hold the Firestore document ID for updates
     val name: String = "",
     val description: String = "",
@@ -19,7 +18,6 @@ data class LostFoundItem(
     @set:PropertyName("lost found")
     var isLost: Boolean = true, // true for lost, false for found
     
-    val isLost: Boolean = false,
     var status: String = "Pending", // Add this field with a default value
     val userId: String = "",
     val userEmail: String = "",
@@ -27,7 +25,5 @@ data class LostFoundItem(
     val timestamp: Timestamp = Timestamp.now()
 ) : Serializable {
     // Constructor for compatibility with Firestore
-    constructor() : this("", "", "", "", "", true, "", "", "", Timestamp.now())
+    constructor() : this("", "", "", "", "", true, "", "", "", "", Timestamp.now())
 }
-    val timestamp: Timestamp? = null
-)
