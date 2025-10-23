@@ -23,4 +23,7 @@ data class LostFoundItem(
     val userEmail: String = "",
     val imageUrl: String = "",
     val timestamp: Timestamp = Timestamp.now()
-) : Serializable
+) : Serializable {
+    // Constructor for compatibility with Firestore
+    constructor() : this("", "", "", "", "", true, "", "", "", "", Timestamp.now())
+}

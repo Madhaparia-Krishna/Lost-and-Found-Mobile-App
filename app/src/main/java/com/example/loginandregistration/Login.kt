@@ -211,6 +211,62 @@ class Login : AppCompatActivity() {
             }
     }
 
+    private fun checkUserRoleAndRedirect() {
+        val currentUser = auth.currentUser ?: return
+        val db = FirebaseFirestore.getInstance()
+        
+        db.collection("users").document(currentUser.uid)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val role = document.getString("role") ?: "user"
+                    when (role) {
+                        "admin" -> {
+                            val intent = Intent(this, com.example.loginandregistration.admin.AdminDashboardActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            startActivity(intent)
+                            finish()
+                        }
+                        "security" -> {
+                            val intent = Intent(this, SecurityMainActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            startActivity(intent)
+                            finish()
+                        }
+                        else -> {
+                            navigateToDashboard()
+                        }
+                    }
+                } else {
+                    // Document doesn't exist, create it
+                    createNewUserDocument(currentUser.uid, currentUser.email)
+                    navigateToDashboard()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error checking user role", e)
+                Toast.makeText(this, "Error checking user role: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun createNewUserDocument(userId: String, email: String?) {
+        val db = FirebaseFirestore.getInstance()
+        val userData = hashMapOf(
+            "email" to (email ?: ""),
+            "role" to "user",
+            "createdAt" to com.google.firebase.Timestamp.now()
+        )
+        
+        db.collection("users").document(userId)
+            .set(userData)
+            .addOnSuccessListener {
+                Log.d(TAG, "User document created successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error creating user document", e)
+            }
+    }
+
     override fun onStart() {
         super.onStart()
         val currentUser = auth.currentUser
