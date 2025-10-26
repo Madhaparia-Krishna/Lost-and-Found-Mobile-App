@@ -16,15 +16,13 @@ data class LostFoundItem(
     var status: String = "Pending",
     val timestamp: Timestamp = Timestamp.now(),
 
-    // --- THIS IS THE FIX ---
-    // Only one 'isLost' property is kept, which correctly maps to the
-    // "lost found" field in your Firestore database.
+    // Map Firestore "lost found" field to isLost property
     @get:PropertyName("lost found")
     @set:PropertyName("lost found")
     var isLost: Boolean = true // true for "Lost", false for "Found"
 
 ) : Serializable {
-    // A no-argument constructor is required by Firebase for deserialization
+    // No-argument constructor required by Firebase for deserialization
     constructor() : this(
         id = "",
         name = "",
@@ -39,3 +37,4 @@ data class LostFoundItem(
         isLost = true
     )
 }
+
