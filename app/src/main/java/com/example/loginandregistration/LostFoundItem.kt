@@ -5,36 +5,20 @@ import com.google.firebase.firestore.PropertyName
 import java.io.Serializable
 
 data class LostFoundItem(
-    var id: String = "", // To hold the Firestore document ID for updates
+    var id: String = "", // Important: To hold the Firestore document ID for updates
     val name: String = "",
     val description: String = "",
     val location: String = "",
     val contactInfo: String = "",
-    val userId: String = "",
-    val userEmail: String = "",
-    val imageUrl: String = "",
-    var status: String = "Pending",
-    val timestamp: Timestamp = Timestamp.now(),
 
     // Map Firestore "lost found" field to isLost property
     @get:PropertyName("lost found")
     @set:PropertyName("lost found")
-    var isLost: Boolean = true // true for "Lost", false for "Found"
+    var isLost: Boolean = true, // true for lost, false for found
 
-) : Serializable {
-    // No-argument constructor required by Firebase for deserialization
-    constructor() : this(
-        id = "",
-        name = "",
-        description = "",
-        location = "",
-        contactInfo = "",
-        userId = "",
-        userEmail = "",
-        imageUrl = "",
-        status = "Pending",
-        timestamp = Timestamp.now(),
-        isLost = true
-    )
-}
-
+    var status: String = "Pending", // Add this field with a default value
+    val userId: String = "",
+    val userEmail: String = "",
+    val imageUrl: String = "",
+    val timestamp: Timestamp = Timestamp.now()
+) : Serializable

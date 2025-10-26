@@ -94,17 +94,8 @@ class Login : AppCompatActivity() {
                 .addOnCompleteListener(this) { task ->
                     if (task.isSuccessful) {
                         Log.d(TAG, "signInWithEmail:success")
-
-                        // --- FIX: Special check for the security email ---
-                        if (email == "security@gmail.com") {
-                            Toast.makeText(this, "Security Login Successful", Toast.LENGTH_SHORT).show()
-                            navigateTo(SecurityMainActivity::class.java)
-                        } else {
-                            // Use the existing role check for all other users
-                            checkUserRoleAndRedirect()
-                        }
-                        // --- END FIX ---
-
+                        // After successful login, check role from Firestore for redirection
+                        checkUserRoleAndRedirect()
                     } else {
                         Log.w(TAG, "signInWithEmail:failure", task.exception)
                         Toast.makeText(this, "Login failed: ${task.exception?.message}", Toast.LENGTH_LONG).show()
@@ -148,61 +139,64 @@ class Login : AppCompatActivity() {
                         Log.d(TAG, "New user detected, creating Firestore document.")
                         auth.currentUser?.let { createNewUserDocument(it) }
                     }
+                    // Always check role after signing in
                     checkUserRoleAndRedirect()
                 } else {
                     Log.w(TAG, "signInWithCredential:failure", task.exception)
-                    Toast.makeText(this, getString(R.string.google_login_failed, task.exception?.message ?: getString(R.string.unknown_error)), Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Google login failed: ${task.exception?.message}", Toast.LENGTH_LONG).show()
                 }
             }
     }
 
+    // --- FIX: Merged into a single, unambiguous function ---
     private fun checkUserRoleAndRedirect() {
-        val user = auth.currentUser ?: return
-        val userEmail = user.email
-
-        // --- FIX: Added special check for security email in the central function ---
-        if (userEmail == "security@gmail.com") {
-            navigateTo(SecurityMainActivity::class.java)
-            return
+        val user = auth.currentUser
+        if (user == null) {
+            Log.w(TAG, "checkUserRoleAndRedirect called with no user logged in.")
+            return // No user, so do nothing.
         }
-        // --- END FIX ---
 
         db.collection("users").document(user.uid).get()
             .addOnSuccessListener { document ->
                 if (document != null && document.exists()) {
-                    when (document.getString("role")) { // Assuming the field is 'role' based on your provided structure
+                    val role = document.getString("role")
+                    Log.d(TAG, "User role is: $role")
+                    when (role) {
                         "Admin" -> navigateTo(AdminDashboardActivity::class.java)
                         "Security" -> navigateTo(SecurityMainActivity::class.java)
-                        "Student" -> navigateTo(MainActivity::class.java) // Changed from "User" to "Student"
+                        "Student" -> navigateTo(MainActivity::class.java)
                         else -> {
-                            Log.w(TAG, "Role not recognized. Defaulting to MainActivity.")
+                            Log.w(TAG, "Role '$role' not recognized. Defaulting to MainActivity.")
                             navigateTo(MainActivity::class.java)
                         }
                     }
                 } else {
                     Log.w(TAG, "User document does not exist for UID: ${user.uid}. Creating and redirecting.")
-                    createNewUserDocument(user)
-                    navigateTo(MainActivity::class.java)
+                    createNewUserDocument(user) // Create document for user that exists in Auth but not Firestore
+                    navigateTo(MainActivity::class.java) // Redirect to default student dashboard
                 }
             }
             .addOnFailureListener { exception ->
-                Log.e(TAG, "Error getting user role", exception)
+                Log.e(TAG, "Error getting user role from Firestore", exception)
+                // Fallback to default dashboard on error
                 navigateTo(MainActivity::class.java)
             }
     }
 
+    // --- FIX: Merged into a single, unambiguous function ---
     private fun createNewUserDocument(user: FirebaseUser) {
         val userMap = hashMapOf(
             "email" to user.email,
-            "role" to "Student", // Default role changed to 'Student'
+            "role" to "Student", // New users default to "Student" role
             "displayName" to user.displayName,
-            "uid" to user.uid
+            "uid" to user.uid,
+            "createdAt" to com.google.firebase.Timestamp.now()
         )
 
         db.collection("users").document(user.uid)
-            .set(userMap)
+            .set(userMap) // Use set() instead of add() to specify the document ID
             .addOnSuccessListener {
-                Log.d(TAG, "New user document created in Firestore for UID: ${user.uid}")
+                Log.d(TAG, "New user document created/updated in Firestore for UID: ${user.uid}")
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Error creating user document in Firestore", e)
@@ -213,11 +207,12 @@ class Login : AppCompatActivity() {
         val intent = Intent(this, activityClass)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
-        finish()
+        finish() // Call finish to prevent user from going back to the login screen
     }
 
     override fun onStart() {
         super.onStart()
+        // Check if a user is already signed in and redirect them
         val currentUser = auth.currentUser
         if (currentUser != null) {
             Log.d(TAG, "User already logged in. Checking role...")
