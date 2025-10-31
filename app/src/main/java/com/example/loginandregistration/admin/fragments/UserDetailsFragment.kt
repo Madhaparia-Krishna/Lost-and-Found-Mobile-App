@@ -42,6 +42,7 @@ class UserDetailsFragment : Fragment() {
     private lateinit var btnEditUser: MaterialButton
     private lateinit var btnChangeRole: MaterialButton
     private lateinit var btnBlockUnblock: MaterialButton
+    private lateinit var btnDeleteUser: MaterialButton
     
     private var currentUser: AdminUser? = null
     
@@ -72,9 +73,11 @@ class UserDetailsFragment : Fragment() {
         setupClickListeners()
         observeViewModel()
         
-        // Load user details
-        arguments?.getString(ARG_USER_ID)?.let { userId ->
-            loadUserDetails(userId)
+        // Load user details - support both manual arguments and navigation args
+        val userId = arguments?.getString(ARG_USER_ID) 
+            ?: arguments?.getString("user_id")
+        userId?.let {
+            loadUserDetails(it)
         }
     }
     
@@ -93,6 +96,7 @@ class UserDetailsFragment : Fragment() {
         btnEditUser = view.findViewById(R.id.btnEditUser)
         btnChangeRole = view.findViewById(R.id.btnChangeRole)
         btnBlockUnblock = view.findViewById(R.id.btnBlockUnblock)
+        btnDeleteUser = view.findViewById(R.id.btnDeleteUser)
     }
     
     private fun setupClickListeners() {
@@ -115,6 +119,12 @@ class UserDetailsFragment : Fragment() {
                 } else {
                     showBlockUserDialog(user)
                 }
+            }
+        }
+        
+        btnDeleteUser.setOnClickListener {
+            currentUser?.let { user ->
+                showDeleteUserConfirmation(user)
             }
         }
     }
@@ -161,8 +171,8 @@ class UserDetailsFragment : Fragment() {
         tvUserEmail.text = user.email
         tvUserId.text = user.uid
         
-        // Load avatar
-        if (user.photoUrl.isNotEmpty()) {
+        // Load avatar - handle nullable photoUrl properly
+        if (!user.photoUrl.isNullOrEmpty()) {
             Glide.with(this)
                 .load(user.photoUrl)
                 .placeholder(R.drawable.ic_person_placeholder)
@@ -190,10 +200,10 @@ class UserDetailsFragment : Fragment() {
         
         // Account information
         val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-        tvAccountCreated.text = sdf.format(Date(user.createdAt))
+        tvAccountCreated.text = sdf.format(user.createdAt.toDate())
         
-        if (user.lastLoginAt > 0) {
-            tvLastLogin.text = getTimeAgo(user.lastLoginAt)
+        if (user.lastLoginAt != null) {
+            tvLastLogin.text = getTimeAgo(user.lastLoginAt.seconds * 1000)
         } else {
             tvLastLogin.text = "Never"
         }
@@ -233,10 +243,8 @@ class UserDetailsFragment : Fragment() {
     }
     
     private fun showEditUserDialog(user: AdminUser) {
-        // TODO: This will be implemented in task 9.4
-        // val dialog = EditUserDialog.newInstance(user)
-        // dialog.show(parentFragmentManager, "EditUserDialog")
-        Snackbar.make(requireView(), "Edit user dialog - Coming soon", Snackbar.LENGTH_SHORT).show()
+        val dialog = com.example.loginandregistration.admin.dialogs.EditUserDialog.newInstance(user)
+        dialog.show(parentFragmentManager, "EditUserDialog")
     }
     
     private fun showRoleChangeDialog(user: AdminUser) {
@@ -262,29 +270,40 @@ class UserDetailsFragment : Fragment() {
     }
     
     private fun showBlockUserDialog(user: AdminUser) {
-        // TODO: This will be implemented in task 9.3
-        // val dialog = BlockUserDialog.newInstance(user)
-        // dialog.show(parentFragmentManager, "BlockUserDialog")
-        
-        // Temporary implementation - show simple dialog
+        val dialog = com.example.loginandregistration.admin.dialogs.BlockUserDialog.newInstance(user)
+        dialog.show(parentFragmentManager, "BlockUserDialog")
+    }
+    
+    private fun showUnblockConfirmation(user: AdminUser) {
+        val userName = if (user.displayName.isNotEmpty()) user.displayName else user.email
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("Block User")
-            .setMessage("Are you sure you want to block ${user.displayName}?")
-            .setPositiveButton("Block") { _, _ ->
-                viewModel.blockUser(user.uid, "Blocked by admin")
+            .setTitle("Unblock User")
+            .setMessage("Are you sure you want to unblock $userName? They will be able to log in again.")
+            .setPositiveButton("Unblock") { _, _ ->
+                viewModel.unblockUser(user.uid)
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
     
-    private fun showUnblockConfirmation(user: AdminUser) {
+    private fun showDeleteUserConfirmation(user: AdminUser) {
+        val userName = if (user.displayName.isNotEmpty()) user.displayName else user.email
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("Unblock User")
-            .setMessage("Are you sure you want to unblock ${user.displayName}?")
-            .setPositiveButton("Unblock") { _, _ ->
-                viewModel.unblockUser(user.uid)
+            .setTitle("Delete User")
+            .setMessage("⚠️ WARNING: This action is PERMANENT and cannot be undone!\n\n" +
+                    "Are you sure you want to delete $userName?\n\n" +
+                    "This will:\n" +
+                    "• Delete the user's Firestore profile\n" +
+                    "• Remove all user data\n" +
+                    "• Log this action in the activity log\n\n" +
+                    "Note: The Firebase Authentication account must be deleted separately via Admin SDK or Cloud Function.")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.deleteUser(user.uid)
+                // Navigate back to user list after deletion
+                requireActivity().supportFragmentManager.popBackStack()
             }
             .setNegativeButton("Cancel", null)
+            .setIcon(android.R.drawable.ic_dialog_alert)
             .show()
     }
 }

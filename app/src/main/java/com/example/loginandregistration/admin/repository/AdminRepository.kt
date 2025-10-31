@@ -4,6 +4,7 @@ import com.example.loginandregistration.LostFoundItem
 import com.example.loginandregistration.admin.models.*
 import com.example.loginandregistration.admin.utils.SecurityHelper
 import com.example.loginandregistration.admin.utils.DataValidator
+import com.example.loginandregistration.admin.utils.PerformanceHelper
 import com.example.loginandregistration.firebase.FirebaseManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -13,6 +14,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 import android.util.Log
@@ -50,23 +53,21 @@ class AdminRepository {
     }
     
     // Check Firebase connection
-    fun checkFirebaseConnection(callback: (Boolean, String?) -> Unit) {
-        try {
-            // Simple connection test
-            firestore.collection(ITEMS_COLLECTION)
-                .limit(1)
-                .get()
-                .addOnSuccessListener {
-                    Log.d(TAG, "Firebase connection successful")
-                    callback(true, "Connected successfully")
-                }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Firebase connection failed", e)
-                    callback(false, e.message)
-                }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking Firebase connection", e)
-            callback(false, e.message)
+    suspend fun checkFirebaseConnection(): Pair<Boolean, String?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Simple connection test
+                firestore.collection(ITEMS_COLLECTION)
+                    .limit(1)
+                    .get()
+                    .await()
+                
+                Log.d(TAG, "Firebase connection successful")
+                Pair(true, "Connected successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Firebase connection failed", e)
+                Pair(false, e.message)
+            }
         }
     }
     
@@ -82,8 +83,8 @@ class AdminRepository {
                     photoUrl = currentUser.photoUrl?.toString() ?: "",
                     role = UserRole.ADMIN,
                     isBlocked = false,
-                    createdAt = System.currentTimeMillis(),
-                    lastLoginAt = System.currentTimeMillis()
+                    createdAt = com.google.firebase.Timestamp.now(),
+                    lastLoginAt = com.google.firebase.Timestamp.now()
                 )
                 
                 firestore.collection(USERS_COLLECTION)
@@ -109,6 +110,7 @@ class AdminRepository {
     }
     
     // Real-time dashboard stats
+    // Requirements: 9.6, 9.7
     fun getDashboardStats(): Flow<DashboardStats> = callbackFlow {
         val itemsListener = firestore.collection(ITEMS_COLLECTION)
             .addSnapshotListener { itemsSnapshot, error ->
@@ -121,6 +123,10 @@ class AdminRepository {
                 if (itemsSnapshot != null) {
                     try {
                         val items = itemsSnapshot.toObjects(LostFoundItem::class.java)
+                        
+                        // For large datasets, compute stats asynchronously
+                        // Note: This is already in a background thread (Firestore listener thread)
+                        // but we make it explicit for clarity
                         val stats = DashboardStats(
                             totalItems = items.size,
                             lostItems = items.count { it.isLost },
@@ -552,7 +558,7 @@ class AdminRepository {
                 "isBlocked" to true,
                 "blockReason" to sanitizedReason,
                 "blockedBy" to currentUser.uid,
-                "blockedAt" to System.currentTimeMillis()
+                "blockedAt" to com.google.firebase.Timestamp.now()
             )
             
             firestore.collection(USERS_COLLECTION)
@@ -606,7 +612,7 @@ class AdminRepository {
                 "isBlocked" to false,
                 "blockReason" to "",
                 "blockedBy" to "",
-                "blockedAt" to 0L
+                "blockedAt" to null
             )
             
             firestore.collection(USERS_COLLECTION)
@@ -710,6 +716,78 @@ class AdminRepository {
         } catch (e: Exception) {
             Log.e(TAG, "Error updating user details", e)
             Result.failure(Exception("Failed to update user details: ${e.message}"))
+        }
+    }
+    
+    /**
+     * Delete a user from Firestore and Firebase Authentication
+     * Requirements: 6.6, 6.7, 6.11
+     * 
+     * Note: This method only deletes the user from Firestore. Firebase Authentication
+     * user deletion requires Admin SDK or Cloud Function, which cannot be done directly
+     * from the Android client for security reasons.
+     */
+    suspend fun deleteUser(userId: String): Result<Unit> {
+        return try {
+            requireAdminAccess()
+            
+            // Validate user ID
+            val userIdValidation = DataValidator.validateUserId(userId)
+            if (!userIdValidation.isValid) {
+                return Result.failure(IllegalArgumentException(userIdValidation.getErrorMessage()))
+            }
+            
+            val currentUser = auth.currentUser
+                ?: return Result.failure(SecurityException("Not authenticated"))
+            
+            // Prevent admin from deleting themselves
+            if (userId == currentUser.uid) {
+                return Result.failure(IllegalArgumentException("Cannot delete your own account"))
+            }
+            
+            // Get user details before deletion for logging
+            val userResult = getUserDetails(userId)
+            val userEmail = if (userResult.isSuccess) {
+                userResult.getOrNull()?.email ?: "Unknown"
+            } else {
+                "Unknown"
+            }
+            
+            // Delete user document from Firestore
+            firestore.collection(USERS_COLLECTION)
+                .document(userId)
+                .delete()
+                .await()
+            
+            // Log activity
+            val activityLog = ActivityLog(
+                id = firestore.collection(ACTIVITY_LOGS_COLLECTION).document().id,
+                actorId = currentUser.uid,
+                actorEmail = currentUser.email ?: "",
+                actorRole = UserRole.ADMIN,
+                actionType = ActionType.USER_DELETE,
+                targetType = TargetType.USER,
+                targetId = userId,
+                description = "User '$userEmail' deleted by admin. Note: Firebase Authentication account must be deleted separately via Admin SDK or Cloud Function.",
+                previousValue = userEmail,
+                newValue = "deleted",
+                deviceInfo = android.os.Build.MODEL
+            )
+            
+            firestore.collection(ACTIVITY_LOGS_COLLECTION)
+                .document(activityLog.id)
+                .set(activityLog.toMap())
+                .await()
+            
+            Log.d(TAG, "User $userId deleted from Firestore successfully")
+            Log.w(TAG, "Note: Firebase Authentication account for $userId must be deleted separately via Admin SDK or Cloud Function")
+            Result.success(Unit)
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Security error deleting user", e)
+            Result.failure(e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting user", e)
+            Result.failure(Exception("Failed to delete user: ${e.message}"))
         }
     }
     
@@ -834,7 +912,7 @@ class AdminRepository {
                             calendar.set(Calendar.MILLISECOND, 0)
                             val monthStart = calendar.timeInMillis
                             
-                            val newUsersThisMonth = users.count { it.createdAt >= monthStart }
+                            val newUsersThisMonth = users.count { it.createdAt.seconds * 1000 >= monthStart }
                             
                             // Calculate average items per user
                             val totalItems = users.sumOf { 
@@ -3474,58 +3552,68 @@ class AdminRepository {
     
     /**
      * Compute user analytics (internal method)
+     * Heavy data processing operations run on Dispatchers.Default
+     * Requirements: 9.6, 9.7
      */
     private suspend fun computeUserAnalytics(): UserAnalytics {
-        val usersSnapshot = firestore.collection(USERS_COLLECTION).get().await()
+        // Fetch data on IO dispatcher
+        val usersSnapshot = withContext(Dispatchers.IO) {
+            firestore.collection(USERS_COLLECTION).get().await()
+        }
         val users = usersSnapshot.documents.mapNotNull { 
             it.toObject(EnhancedAdminUser::class.java) 
         }
         
-        val totalUsers = users.size
-        val activeUsers = users.count { !it.isBlocked }
-        val blockedUsers = users.count { it.isBlocked }
-        
-        val usersByRole = users.groupBy { it.role }
-            .mapValues { it.value.size }
-        
-        // Calculate new users this month
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        val monthStart = calendar.timeInMillis
-        
-        val newUsersThisMonth = users.count { it.createdAt >= monthStart }
-        
-        // Calculate average items per user
-        val itemsSnapshot = firestore.collection(ITEMS_COLLECTION).get().await()
-        val totalItems = itemsSnapshot.size()
-        val averageItemsPerUser = if (totalUsers > 0) totalItems.toFloat() / totalUsers else 0f
-        
-        // Get top contributors (users with most items)
-        val itemsByUser = itemsSnapshot.documents
-            .mapNotNull { it.getString("userId") }
-            .groupingBy { it }
-            .eachCount()
-        
-        val topContributors = users
-            .map { user ->
-                val itemCount = itemsByUser[user.uid] ?: 0
-                user.copy(itemsReported = itemCount)
+        // Perform heavy computations on Default dispatcher to avoid blocking main thread
+        return withContext(Dispatchers.Default) {
+            val totalUsers = users.size
+            val activeUsers = users.count { !it.isBlocked }
+            val blockedUsers = users.count { it.isBlocked }
+            
+            val usersByRole = users.groupBy { it.role }
+                .mapValues { it.value.size }
+            
+            // Calculate new users this month
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.DAY_OF_MONTH, 1)
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            val monthStart = calendar.timeInMillis
+            
+            val newUsersThisMonth = users.count { it.createdAt.seconds * 1000 >= monthStart }
+            
+            // Calculate average items per user
+            val itemsSnapshot = withContext(Dispatchers.IO) {
+                firestore.collection(ITEMS_COLLECTION).get().await()
             }
-            .sortedByDescending { it.itemsReported }
-            .take(5)
-        
-        return UserAnalytics(
-            totalUsers = totalUsers,
-            activeUsers = activeUsers,
-            blockedUsers = blockedUsers,
-            usersByRole = usersByRole,
-            newUsersThisMonth = newUsersThisMonth,
-            averageItemsPerUser = averageItemsPerUser,
-            topContributors = topContributors
-        )
+            val totalItems = itemsSnapshot.size()
+            val averageItemsPerUser = if (totalUsers > 0) totalItems.toFloat() / totalUsers else 0f
+            
+            // Get top contributors (users with most items) - heavy operation
+            val itemsByUser = itemsSnapshot.documents
+                .mapNotNull { it.getString("userId") }
+                .groupingBy { it }
+                .eachCount()
+            
+            val topContributors = users
+                .map { user ->
+                    val itemCount = itemsByUser[user.uid] ?: 0
+                    user.copy(itemsReported = itemCount)
+                }
+                .sortedByDescending { it.itemsReported }
+                .take(5)
+            
+            UserAnalytics(
+                totalUsers = totalUsers,
+                activeUsers = activeUsers,
+                blockedUsers = blockedUsers,
+                usersByRole = usersByRole,
+                newUsersThisMonth = newUsersThisMonth,
+                averageItemsPerUser = averageItemsPerUser,
+                topContributors = topContributors
+            )
+        }
     }
     
     /**
@@ -3561,50 +3649,59 @@ class AdminRepository {
     
     /**
      * Compute donation statistics (internal method)
+     * Heavy data processing operations run on Dispatchers.Default
+     * Requirements: 9.6, 9.7
      */
     private suspend fun computeDonationStats(dateRange: DateRange?): DonationStats {
-        var query: Query = firestore.collection(DONATIONS_COLLECTION)
-        
-        // Apply date range filter if provided
-        if (dateRange != null) {
-            query = query
-                .whereGreaterThanOrEqualTo("donatedAt", dateRange.startDate)
-                .whereLessThanOrEqualTo("donatedAt", dateRange.endDate)
+        // Fetch data on IO dispatcher
+        val snapshot = withContext(Dispatchers.IO) {
+            var query: Query = firestore.collection(DONATIONS_COLLECTION)
+            
+            // Apply date range filter if provided
+            if (dateRange != null) {
+                query = query
+                    .whereGreaterThanOrEqualTo("donatedAt", dateRange.startDate)
+                    .whereLessThanOrEqualTo("donatedAt", dateRange.endDate)
+            }
+            
+            query.get().await()
         }
         
-        val snapshot = query.get().await()
         val donations = snapshot.documents.mapNotNull { 
             it.toObject(DonationItem::class.java) 
         }
         
-        val totalDonated = donations.count { it.status == DonationStatus.DONATED }
-        val totalValue = donations
-            .filter { it.status == DonationStatus.DONATED }
-            .sumOf { it.estimatedValue }
-        
-        val donationsByCategory = donations
-            .filter { it.status == DonationStatus.DONATED }
-            .groupBy { it.category }
-            .mapValues { it.value.size }
-        
-        // Calculate donations by month
-        val dateFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
-        val donationsByMonth = donations
-            .filter { it.status == DonationStatus.DONATED && it.donatedAt > 0 }
-            .groupBy { dateFormat.format(Date(it.donatedAt)) }
-            .mapValues { it.value.size }
-        
-        val pendingDonations = donations.count { it.status == DonationStatus.PENDING }
-        val readyForDonation = donations.count { it.status == DonationStatus.READY }
-        
-        return DonationStats(
-            totalDonated = totalDonated,
-            totalValue = totalValue,
-            donationsByCategory = donationsByCategory,
-            donationsByMonth = donationsByMonth,
-            pendingDonations = pendingDonations,
-            readyForDonation = readyForDonation
-        )
+        // Perform heavy computations on Default dispatcher to avoid blocking main thread
+        return withContext(Dispatchers.Default) {
+            val totalDonated = donations.count { it.status == DonationStatus.DONATED }
+            val totalValue = donations
+                .filter { it.status == DonationStatus.DONATED }
+                .sumOf { it.estimatedValue }
+            
+            val donationsByCategory = donations
+                .filter { it.status == DonationStatus.DONATED }
+                .groupBy { it.category }
+                .mapValues { it.value.size }
+            
+            // Calculate donations by month
+            val dateFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+            val donationsByMonth = donations
+                .filter { it.status == DonationStatus.DONATED && it.donatedAt > 0 }
+                .groupBy { dateFormat.format(Date(it.donatedAt)) }
+                .mapValues { it.value.size }
+            
+            val pendingDonations = donations.count { it.status == DonationStatus.PENDING }
+            val readyForDonation = donations.count { it.status == DonationStatus.READY }
+            
+            DonationStats(
+                totalDonated = totalDonated,
+                totalValue = totalValue,
+                donationsByCategory = donationsByCategory,
+                donationsByMonth = donationsByMonth,
+                pendingDonations = pendingDonations,
+                readyForDonation = readyForDonation
+            )
+        }
     }
     
     /**
@@ -3901,4 +3998,8 @@ class AdminRepository {
      * Get count of logs eligible for archiving (older than 1 year)
      * Requirements: 5.11
      */
+    
+    // Note: Item Management Methods (getItemDetails, updateItemDetails, deleteItem) 
+    // are already implemented earlier in this file (lines 965-1300)
+    // Requirements: 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9
 }

@@ -65,8 +65,8 @@ class ItemDetailsDialogFragment : DialogFragment() {
         val sdf = SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
         tvReportDate.text = "Reported: ${sdf.format(item.timestamp.toDate())}"
         
-        // Load image
-        if (item.imageUrl.isNotEmpty()) {
+        // Load image - handle nullable imageUrl properly
+        if (!item.imageUrl.isNullOrEmpty()) {
             Glide.with(this)
                 .load(item.imageUrl)
                 .placeholder(R.drawable.ic_image_placeholder)

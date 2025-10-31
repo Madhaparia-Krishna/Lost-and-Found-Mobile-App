@@ -308,9 +308,21 @@
                 android:id="@+id/btnBlockUnblock"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:text="Block User"
                 app:icon="@drawable/ic_block"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDeleteUser"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Delete User"
+                android:textColor="@android:color/holo_red_dark"
+                app:icon="@drawable/ic_delete"
+                app:iconTint="@android:color/holo_red_dark"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                app:strokeColor="@android:color/holo_red_dark" />
 
         </LinearLayout>
 

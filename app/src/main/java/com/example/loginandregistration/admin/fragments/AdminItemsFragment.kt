@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.loginandregistration.R
@@ -324,9 +325,11 @@ class AdminItemsFragment : Fragment() {
     }
     
     private fun showItemDetails(item: com.example.loginandregistration.LostFoundItem) {
-        // Navigate to ItemDetailsFragment (will be implemented in task 10.2)
-        // For now, show a simple dialog
-        Snackbar.make(requireView(), "Item details: ${item.name}", Snackbar.LENGTH_SHORT).show()
+        // Navigate to ItemDetailsFragment using Navigation component
+        val bundle = Bundle().apply {
+            putString("item_id", item.id)
+        }
+        findNavController().navigate(R.id.itemDetailsFragment, bundle)
     }
     
     private fun showStatusEditDialog(item: com.example.loginandregistration.LostFoundItem) {

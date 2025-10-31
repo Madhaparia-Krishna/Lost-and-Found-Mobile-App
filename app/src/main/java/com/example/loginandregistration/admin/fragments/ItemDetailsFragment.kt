@@ -70,7 +70,9 @@ class ItemDetailsFragment : Fragment() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        itemId = arguments?.getString(ARG_ITEM_ID)
+        // Support both manual arguments and navigation args
+        itemId = arguments?.getString(ARG_ITEM_ID) 
+            ?: arguments?.getString("item_id")
     }
     
     override fun onCreateView(
@@ -160,8 +162,8 @@ class ItemDetailsFragment : Fragment() {
     }
     
     private fun displayItemDetails(item: EnhancedLostFoundItem) {
-        // Load image
-        if (item.imageUrl.isNotEmpty()) {
+        // Load image - handle nullable imageUrl properly
+        if (!item.imageUrl.isNullOrEmpty()) {
             Glide.with(this)
                 .load(item.imageUrl)
                 .placeholder(R.drawable.ic_image_placeholder)

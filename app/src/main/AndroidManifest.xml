@@ -27,7 +27,8 @@
  <!-- Login Activity (Launcher) -->
         <activity
             android:name=".Login"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.App.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -39,11 +40,13 @@
             android:exported="false" /> <!-- Main Activity (Dashboard) -->
         <activity
             android:name=".MainActivity"
-            android:exported="true" />
+            android:exported="true"
+            android:theme="@style/Theme.App.Starting" />
         <activity 
             android:name=".SecurityMainActivity"
             android:exported="true"
-            android:launchMode="singleTop">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.App.Starting">
             <!-- Deep link intent filter for notification actions -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -60,7 +63,7 @@
             android:name=".admin.AdminDashboardActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.LoginAndRegistration">
+            android:theme="@style/Theme.App.Starting">
             <!-- Deep link intent filter for admin notification actions -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

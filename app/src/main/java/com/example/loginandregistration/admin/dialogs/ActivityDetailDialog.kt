@@ -9,6 +9,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.DialogFragment
+import androidx.navigation.findNavController
 import com.example.loginandregistration.R
 import com.example.loginandregistration.admin.fragments.ItemDetailsFragment
 import com.example.loginandregistration.admin.fragments.UserDetailsFragment
@@ -190,27 +191,40 @@ class ActivityDetailDialog : DialogFragment() {
     private fun navigateToRelatedEntity() {
         dismiss()
         
+        val bundle = Bundle()
         when (activityLog.targetType) {
             TargetType.USER -> {
-                // Navigate to user details
-                val fragment = UserDetailsFragment.newInstance(activityLog.targetId)
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, fragment)
-                    .addToBackStack(null)
-                    .commit()
+                // Navigate to user details using Navigation component
+                bundle.putString("user_id", activityLog.targetId)
+                try {
+                    requireActivity().findNavController(R.id.nav_host_fragment_activity_admin)
+                        .navigate(R.id.userDetailsFragment, bundle)
+                } catch (e: Exception) {
+                    com.google.android.material.snackbar.Snackbar.make(
+                        requireActivity().findViewById(android.R.id.content),
+                        "Unable to navigate to user details",
+                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                    ).show()
+                }
             }
             TargetType.ITEM -> {
-                // Navigate to item details
-                val fragment = ItemDetailsFragment.newInstance(activityLog.targetId)
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, fragment)
-                    .addToBackStack(null)
-                    .commit()
+                // Navigate to item details using Navigation component
+                bundle.putString("item_id", activityLog.targetId)
+                try {
+                    requireActivity().findNavController(R.id.nav_host_fragment_activity_admin)
+                        .navigate(R.id.itemDetailsFragment, bundle)
+                } catch (e: Exception) {
+                    com.google.android.material.snackbar.Snackbar.make(
+                        requireActivity().findViewById(android.R.id.content),
+                        "Unable to navigate to item details",
+                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                    ).show()
+                }
             }
             else -> {
                 // Show message that navigation is not available for this type
                 com.google.android.material.snackbar.Snackbar.make(
-                    requireView(),
+                    requireActivity().findViewById(android.R.id.content),
                     "Navigation not available for ${activityLog.targetType.getDisplayName()}",
                     com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
                 ).show()

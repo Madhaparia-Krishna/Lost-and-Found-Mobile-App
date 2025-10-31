@@ -7,6 +7,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
@@ -37,20 +38,39 @@ class AdminDashboardActivity : AppCompatActivity() {
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install splash screen before calling super.onCreate()
+        val splashScreen = installSplashScreen()
+        
         super.onCreate(savedInstanceState)
+        
+        // Set theme back to regular theme (for Android 11 and below)
+        setTheme(R.style.Theme_LoginAndRegistration)
+        
+        // Set condition to keep splash screen visible (false = dismiss immediately after app is ready)
+        splashScreen.setKeepOnScreenCondition { false }
         
         Log.d(TAG, "AdminDashboardActivity onCreate started")
         
-        // Check admin access
-        if (!adminRepository.isAdminUser()) {
-            Log.w(TAG, "Access denied - not admin user")
-            Toast.makeText(this, "Access denied. Admin privileges required.", Toast.LENGTH_LONG).show()
-            startActivity(Intent(this, Login::class.java))
-            finish()
-            return
+        // Check admin access in background to avoid blocking main thread
+        lifecycleScope.launch(Dispatchers.IO) {
+            val isAdmin = adminRepository.isAdminUser()
+            
+            withContext(Dispatchers.Main) {
+                if (!isAdmin) {
+                    Log.w(TAG, "Access denied - not admin user")
+                    Toast.makeText(this@AdminDashboardActivity, "Access denied. Admin privileges required.", Toast.LENGTH_LONG).show()
+                    startActivity(Intent(this@AdminDashboardActivity, Login::class.java))
+                    finish()
+                    return@withContext
+                }
+                
+                Log.d(TAG, "Admin access confirmed, setting up dashboard")
+                setupDashboard()
+            }
         }
-        
-        Log.d(TAG, "Admin access confirmed, setting up dashboard")
+    }
+    
+    private fun setupDashboard() {
         setContentView(R.layout.activity_admin_dashboard)
         
         // Initialize ViewModel
@@ -70,8 +90,8 @@ class AdminDashboardActivity : AppCompatActivity() {
                     R.id.navigation_items,
                     R.id.navigation_users,
                     R.id.navigation_donations,
-                    R.id.navigation_activity_log,
-                    R.id.navigation_notifications
+                    R.id.navigation_notifications,
+                    R.id.navigation_profile
                 )
             )
             
@@ -369,17 +389,16 @@ class AdminDashboardActivity : AppCompatActivity() {
         // Use lifecycle-aware coroutines instead of callbacks
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                adminRepository.checkFirebaseConnection { isConnected, message ->
-                    // Switch to main thread for UI updates
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        if (isConnected) {
-                            Log.d(TAG, "Firebase connection successful: $message")
-                            Toast.makeText(this@AdminDashboardActivity, "Connected to Firebase", Toast.LENGTH_SHORT).show()
-                            initializeAdminUser()
-                        } else {
-                            Log.e(TAG, "Firebase connection failed: $message")
-                            Toast.makeText(this@AdminDashboardActivity, "Firebase connection failed: $message", Toast.LENGTH_LONG).show()
-                        }
+                val (isConnected, message) = adminRepository.checkFirebaseConnection()
+                // Switch to main thread for UI updates
+                withContext(Dispatchers.Main) {
+                    if (isConnected) {
+                        Log.d(TAG, "Firebase connection successful: $message")
+                        Toast.makeText(this@AdminDashboardActivity, "Connected to Firebase", Toast.LENGTH_SHORT).show()
+                        initializeAdminUser()
+                    } else {
+                        Log.e(TAG, "Firebase connection failed: $message")
+                        Toast.makeText(this@AdminDashboardActivity, "Firebase connection failed: $message", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {

@@ -13,4 +13,9 @@
     </style>
 
     <style name="Theme.LoginAndRegistration" parent="Base.Theme.LoginAndRegistration" />
+    
+    <!-- Splash Screen Theme for Android 11 and below (API < 31) -->
+    <style name="Theme.App.Starting" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
 </resources>

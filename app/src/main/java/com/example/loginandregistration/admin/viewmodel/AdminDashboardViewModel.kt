@@ -217,32 +217,54 @@ class AdminDashboardViewModel : ViewModel() {
         }
     }
     
+    /**
+     * Search items with query - optimized for large lists
+     * Requirements: 9.6, 9.7
+     */
     fun searchItems(query: String) {
         val currentItems = _allItems.value ?: return
-        val filtered = if (query.isBlank()) {
-            currentItems
-        } else {
-            currentItems.filter { item ->
-                item.name.contains(query, ignoreCase = true) ||
-                item.description.contains(query, ignoreCase = true) ||
-                item.location.contains(query, ignoreCase = true) ||
-                item.userEmail.contains(query, ignoreCase = true)
+        
+        // For large lists, perform filtering on background thread
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val filtered = if (query.isBlank()) {
+                currentItems
+            } else {
+                currentItems.filter { item ->
+                    item.name.contains(query, ignoreCase = true) ||
+                    item.description.contains(query, ignoreCase = true) ||
+                    item.location.contains(query, ignoreCase = true) ||
+                    item.userEmail.contains(query, ignoreCase = true)
+                }
+            }
+            
+            // Update LiveData on main thread
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                _filteredItems.value = filtered
             }
         }
-        _filteredItems.value = filtered
     }
     
+    /**
+     * Search users with query - optimized for large lists
+     * Requirements: 9.6, 9.7
+     */
     fun searchUsers(query: String) {
         val currentUsers = _allUsers.value ?: return
-        val filtered = if (query.isBlank()) {
-            currentUsers
-        } else {
-            currentUsers.filter { user ->
-                user.email.contains(query, ignoreCase = true) ||
-                user.displayName.contains(query, ignoreCase = true)
+        
+        // For large lists, perform filtering on background thread
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val filtered = if (query.isBlank()) {
+                currentUsers
+            } else {
+                currentUsers.filter { user ->
+                    user.email.contains(query, ignoreCase = true) ||
+                    user.displayName.contains(query, ignoreCase = true)
+                }
             }
+            
+            // Update LiveData on main thread (if you add filtered users LiveData)
+            // _filteredUsers.value = filtered
         }
-        // You might want to create a separate filtered users LiveData
     }
     
     // ========== Enhanced User Management Methods (Task 8.1) ==========
@@ -349,6 +371,26 @@ class AdminDashboardViewModel : ViewModel() {
                 }
                 .onFailure { e ->
                     _error.value = "Failed to update user details: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Delete a user
+     * Requirements: 6.6, 6.7, 6.11
+     */
+    fun deleteUser(userId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.deleteUser(userId)
+                .onSuccess {
+                    _successMessage.value = "User deleted successfully from Firestore. Note: Firebase Authentication account must be deleted separately."
+                    // Refresh all users list
+                    loadAllUsers()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to delete user: ${e.message}"
                 }
             _isLoading.value = false
         }

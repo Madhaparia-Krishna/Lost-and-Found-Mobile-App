@@ -7,6 +7,9 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 
 class DebugHelper {
     
@@ -16,44 +19,48 @@ class DebugHelper {
         /**
          * Test Firebase connection and basic operations
          */
-        fun testFirebaseConnection() {
-            Log.d(TAG, "🔥 Starting Firebase connection test...")
-            
-            // Test Firestore write
-            val testData = mapOf(
-                "message" to "Debug test from Android app",
-                "timestamp" to FieldValue.serverTimestamp(),
-                "testType" to "connection_test"
-            )
-            
-            FirebaseFirestore.getInstance()
-                .collection("debug_tests")
-                .add(testData)
-                .addOnSuccessListener { documentReference ->
+        suspend fun testFirebaseConnection() {
+            withContext(Dispatchers.IO) {
+                try {
+                    Log.d(TAG, "🔥 Starting Firebase connection test...")
+                    
+                    // Test Firestore write
+                    val testData = mapOf(
+                        "message" to "Debug test from Android app",
+                        "timestamp" to FieldValue.serverTimestamp(),
+                        "testType" to "connection_test"
+                    )
+                    
+                    val documentReference = FirebaseFirestore.getInstance()
+                        .collection("debug_tests")
+                        .add(testData)
+                        .await()
+                    
                     Log.d(TAG, "✅ Firestore WRITE successful: ${documentReference.id}")
                     
                     // Test Firestore read
                     testFirestoreRead()
-                }
-                .addOnFailureListener { e ->
+                } catch (e: Exception) {
                     Log.e(TAG, "❌ Firestore WRITE failed: ${e.message}", e)
                 }
+            }
         }
         
-        private fun testFirestoreRead() {
-            FirebaseFirestore.getInstance()
-                .collection("debug_tests")
-                .limit(5)
-                .get()
-                .addOnSuccessListener { documents ->
-                    Log.d(TAG, "✅ Firestore READ successful: ${documents.size()} documents")
-                    for (document in documents) {
-                        Log.d(TAG, "Document: ${document.id} => ${document.data}")
-                    }
+        private suspend fun testFirestoreRead() {
+            try {
+                val documents = FirebaseFirestore.getInstance()
+                    .collection("debug_tests")
+                    .limit(5)
+                    .get()
+                    .await()
+                
+                Log.d(TAG, "✅ Firestore READ successful: ${documents.size()} documents")
+                for (document in documents) {
+                    Log.d(TAG, "Document: ${document.id} => ${document.data}")
                 }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "❌ Firestore READ failed: ${e.message}", e)
-                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Firestore READ failed: ${e.message}", e)
+            }
         }
         
         /**
@@ -83,92 +90,101 @@ class DebugHelper {
         /**
          * Test item creation (for testing core functionality)
          */
-        fun testItemCreation() {
-            val currentUser = FirebaseAuth.getInstance().currentUser
-            if (currentUser == null) {
-                Log.e(TAG, "❌ Cannot test item creation - no user logged in")
-                return
-            }
-            
-            Log.d(TAG, "📦 Testing item creation...")
-            
-            val testItem = mapOf(
-                "title" to "Debug Test Item",
-                "description" to "This is a test item created by debug helper",
-                "category" to "LOST",
-                "location" to "Test Location",
-                "userId" to currentUser.uid,
-                "userEmail" to currentUser.email,
-                "createdAt" to FieldValue.serverTimestamp(),
-                "status" to "ACTIVE"
-            )
-            
-            FirebaseFirestore.getInstance()
-                .collection("items")
-                .add(testItem)
-                .addOnSuccessListener { documentReference ->
+        suspend fun testItemCreation() {
+            withContext(Dispatchers.IO) {
+                try {
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    if (currentUser == null) {
+                        Log.e(TAG, "❌ Cannot test item creation - no user logged in")
+                        return@withContext
+                    }
+                    
+                    Log.d(TAG, "📦 Testing item creation...")
+                    
+                    val testItem = mapOf(
+                        "title" to "Debug Test Item",
+                        "description" to "This is a test item created by debug helper",
+                        "category" to "LOST",
+                        "location" to "Test Location",
+                        "userId" to currentUser.uid,
+                        "userEmail" to currentUser.email,
+                        "createdAt" to FieldValue.serverTimestamp(),
+                        "status" to "ACTIVE"
+                    )
+                    
+                    val documentReference = FirebaseFirestore.getInstance()
+                        .collection("items")
+                        .add(testItem)
+                        .await()
+                    
                     Log.d(TAG, "✅ Test item created successfully: ${documentReference.id}")
-                }
-                .addOnFailureListener { e ->
+                } catch (e: Exception) {
                     Log.e(TAG, "❌ Test item creation failed: ${e.message}", e)
                 }
+            }
         }
         
         /**
          * Test reading items (for testing browse functionality)
          */
-        fun testItemReading() {
-            Log.d(TAG, "📖 Testing item reading...")
-            
-            FirebaseFirestore.getInstance()
-                .collection("items")
-                .limit(10)
-                .get()
-                .addOnSuccessListener { documents ->
+        suspend fun testItemReading() {
+            withContext(Dispatchers.IO) {
+                try {
+                    Log.d(TAG, "📖 Testing item reading...")
+                    
+                    val documents = FirebaseFirestore.getInstance()
+                        .collection("items")
+                        .limit(10)
+                        .get()
+                        .await()
+                    
                     Log.d(TAG, "✅ Items read successfully: ${documents.size()} items found")
                     for (document in documents) {
                         val title = document.getString("title") ?: "No title"
                         val category = document.getString("category") ?: "No category"
                         Log.d(TAG, "   Item: $title ($category)")
                     }
-                }
-                .addOnFailureListener { e ->
+                } catch (e: Exception) {
                     Log.e(TAG, "❌ Items reading failed: ${e.message}", e)
                 }
+            }
         }
         
         /**
          * Test user profile data
          */
-        fun testUserProfile() {
-            val currentUser = FirebaseAuth.getInstance().currentUser
-            if (currentUser == null) {
-                Log.e(TAG, "❌ Cannot test user profile - no user logged in")
-                return
-            }
-            
-            Log.d(TAG, "👤 Testing user profile...")
-            
-            FirebaseFirestore.getInstance()
-                .collection("users")
-                .document(currentUser.uid)
-                .get()
-                .addOnSuccessListener { document ->
+        suspend fun testUserProfile() {
+            withContext(Dispatchers.IO) {
+                try {
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    if (currentUser == null) {
+                        Log.e(TAG, "❌ Cannot test user profile - no user logged in")
+                        return@withContext
+                    }
+                    
+                    Log.d(TAG, "👤 Testing user profile...")
+                    
+                    val document = FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(currentUser.uid)
+                        .get()
+                        .await()
+                    
                     if (document.exists()) {
                         Log.d(TAG, "✅ User profile found: ${document.data}")
                     } else {
                         Log.d(TAG, "⚠️ User profile not found in Firestore")
                     }
-                }
-                .addOnFailureListener { e ->
+                } catch (e: Exception) {
                     Log.e(TAG, "❌ User profile read failed: ${e.message}", e)
                 }
+            }
         }
         
         /**
          * Run all debug tests
          */
-        fun runAllTests() {
+        suspend fun runAllTests() {
             Log.d(TAG, "🚀 Running all debug tests...")
             testFirebaseConnection()
             testAuthState()
@@ -180,21 +196,24 @@ class DebugHelper {
         /**
          * Clean up debug test data
          */
-        fun cleanupDebugData() {
-            Log.d(TAG, "🧹 Cleaning up debug test data...")
-            
-            FirebaseFirestore.getInstance()
-                .collection("debug_tests")
-                .get()
-                .addOnSuccessListener { documents ->
+        suspend fun cleanupDebugData() {
+            withContext(Dispatchers.IO) {
+                try {
+                    Log.d(TAG, "🧹 Cleaning up debug test data...")
+                    
+                    val documents = FirebaseFirestore.getInstance()
+                        .collection("debug_tests")
+                        .get()
+                        .await()
+                    
                     for (document in documents) {
-                        document.reference.delete()
+                        document.reference.delete().await()
                     }
                     Log.d(TAG, "✅ Debug test data cleaned up: ${documents.size()} documents deleted")
-                }
-                .addOnFailureListener { e ->
+                } catch (e: Exception) {
                     Log.e(TAG, "❌ Debug cleanup failed: ${e.message}", e)
                 }
+            }
         }
     }
 }

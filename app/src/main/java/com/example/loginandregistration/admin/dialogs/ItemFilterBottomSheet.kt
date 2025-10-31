@@ -14,6 +14,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
+import com.example.loginandregistration.utils.EditTextUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -123,14 +124,14 @@ class ItemFilterBottomSheet : BottomSheetDialogFragment() {
         etStartDate.setOnClickListener {
             showDatePicker { date ->
                 startDateMillis = date
-                etStartDate.setText(dateFormat.format(Date(date)))
+                EditTextUtils.safeSetText(etStartDate, dateFormat.format(Date(date)))
             }
         }
         
         etEndDate.setOnClickListener {
             showDatePicker { date ->
                 endDateMillis = date
-                etEndDate.setText(dateFormat.format(Date(date)))
+                EditTextUtils.safeSetText(etEndDate, dateFormat.format(Date(date)))
             }
         }
     }
@@ -190,12 +191,12 @@ class ItemFilterBottomSheet : BottomSheetDialogFragment() {
     }
     
     private fun clearFilters() {
-        etSearchQuery.setText("")
+        EditTextUtils.safeSetText(etSearchQuery, "")
         actvCategory.setText("All Categories", false)
-        etStartDate.setText("")
-        etEndDate.setText("")
-        etLocation.setText("")
-        etReporter.setText("")
+        EditTextUtils.safeSetText(etStartDate, "")
+        EditTextUtils.safeSetText(etEndDate, "")
+        EditTextUtils.safeSetText(etLocation, "")
+        EditTextUtils.safeSetText(etReporter, "")
         startDateMillis = 0
         endDateMillis = 0
         

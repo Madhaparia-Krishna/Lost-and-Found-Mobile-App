@@ -19,6 +19,8 @@ class ProfileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var auth: FirebaseAuth
+    private lateinit var progressBar: android.widget.ProgressBar
+    private lateinit var scrollView: android.widget.ScrollView
 
     // In app/src/main/java/com/example/loginandregistration/ProfileFragment.kt
 
@@ -31,6 +33,10 @@ class ProfileFragment : Fragment() {
 
         // Initialize Firebase Auth
         auth = Firebase.auth
+
+        // Initialize loading views
+        progressBar = view.findViewById(R.id.progress_bar)
+        scrollView = view.findViewById(R.id.scroll_view)
 
         // --- NEW: Display the user's email ---
         displayUserInfo()
@@ -80,8 +86,13 @@ class ProfileFragment : Fragment() {
             return
         }
 
+        // Show loading indicator
+        showLoading()
+
         // --- Update Password in Firebase ---
         user?.updatePassword(newPassword)?.addOnCompleteListener { task ->
+            hideLoading()
+            
             if (task.isSuccessful) {
                 Log.d("ProfileFragment", "User password updated.")
                 Toast.makeText(context, "Password updated successfully.", Toast.LENGTH_SHORT).show()
@@ -104,6 +115,20 @@ class ProfileFragment : Fragment() {
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         activity?.finish()
+    }
+
+    private fun showLoading() {
+        progressBar.visibility = View.VISIBLE
+        scrollView.visibility = View.GONE
+        binding.btnChangePassword.isEnabled = false
+        binding.btnLogout.isEnabled = false
+    }
+    
+    private fun hideLoading() {
+        progressBar.visibility = View.GONE
+        scrollView.visibility = View.VISIBLE
+        binding.btnChangePassword.isEnabled = true
+        binding.btnLogout.isEnabled = true
     }
 
     override fun onDestroyView() {

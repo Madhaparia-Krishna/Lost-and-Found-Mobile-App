@@ -8,8 +8,13 @@ service cloud.firestore {
     }
     
     // Helper function to check if user is admin
+    // Supports multiple methods: email check OR role field check
+    // Supports both uppercase and lowercase for backward compatibility
     function isAdmin() {
-      return isAuthenticated() && request.auth.token.email == 'admin@gmail.com';
+      return isAuthenticated() && 
+             (request.auth.token.email == 'admin@gmail.com' ||
+              (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'Admin', 'admin']));
     }
     
     // Helper function to check if user owns the resource
@@ -18,55 +23,57 @@ service cloud.firestore {
     }
     
     // Helper function to check if user is moderator or admin
+    // Supports both uppercase and lowercase for backward compatibility
     function isModerator() {
       return isAuthenticated() && 
-             (request.auth.token.email == 'admin@gmail.com' ||
-              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'MODERATOR']);
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'MODERATOR', 'admin', 'moderator'];
+    }
+    
+    // Helper function to check for Security or Admin roles
+    // Supports multiple role formats for backward compatibility
+    function isSecurityOrAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['SECURITY', 'Security', 'security', 'ADMIN', 'Admin', 'admin'];
     }
     
     // Items collection rules
     match /items/{itemId} {
-      // Anyone can read items (for browsing lost & found)
-      // But items with status DONATION_PENDING, DONATION_READY, or DONATED are admin-only
-      allow read: if isAuthenticated() && 
-                 (isModerator() || 
-                  !('status' in resource.data) ||
-                  !(resource.data.status in ['DONATION_PENDING', 'DONATION_READY', 'DONATED']));
+      // All authenticated users can read all items (browse lost and found items)
+      allow read: if isAuthenticated();
       
-      // Users can create items (report lost/found items)
-      allow create: if isAuthenticated() && 
-                   request.auth.uid == request.resource.data.userId;
+      // Users can create items with their own userId OR Security/Admin can create for anyone
+      allow create: if (isAuthenticated() && request.auth.uid == request.resource.data.userId) || 
+                       isSecurityOrAdmin();
       
-      // Users can update their own items (basic fields only)
-      // Admins/moderators can update any item including status field
-      allow update: if isAuthenticated() && 
-                   (request.auth.uid == resource.data.userId && 
-                    !('status' in request.resource.data.diff(resource.data).affectedKeys()) ||
-                    isModerator());
+      // Users can update their own items (but not status), Security/Admin can update anything
+      allow update: if (isAuthenticated() && resource.data.userId == request.auth.uid && 
+                       !('status' in request.resource.data.diff(resource.data).affectedKeys())) || 
+                       isSecurityOrAdmin();
       
-      // Only admins can delete items
-      allow delete: if isAdmin();
+      // Users can delete their own items, Security/Admin can delete any item
+      allow delete: if (isAuthenticated() && resource.data.userId == request.auth.uid) || 
+                       isSecurityOrAdmin();
     }
     
     // Users collection rules
     match /users/{userId} {
-      // Users can read their own profile, admins can read all
-      allow read: if isAuthenticated() && 
-                 (isOwner(userId) || isAdmin());
+      // All authenticated users can read user profiles (needed to see contact info for items)
+      // This is required for the lost & found functionality
+      allow read: if isAuthenticated();
       
       // Users can create their own profile
-      allow create: if isAuthenticated() && isOwner(userId);
+      allow create: if isOwner(userId);
       
       // Users can update their own profile (basic fields only)
       // Only admins can modify role, isBlocked, and admin-specific fields
-      allow update: if isAuthenticated() && 
-                   (isOwner(userId) && 
-                    !('role' in request.resource.data.diff(resource.data).affectedKeys()) &&
-                    !('isBlocked' in request.resource.data.diff(resource.data).affectedKeys()) &&
-                    !('blockReason' in request.resource.data.diff(resource.data).affectedKeys()) &&
-                    !('blockedBy' in request.resource.data.diff(resource.data).affectedKeys()) ||
-                    isAdmin());
+      allow update: if (isOwner(userId) && 
+                       !('role' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('isBlocked' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('blockReason' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('blockedBy' in request.resource.data.diff(resource.data).affectedKeys())) ||
+                       isAdmin();
       
       // Only admins can delete users
       allow delete: if isAdmin();
@@ -74,11 +81,11 @@ service cloud.firestore {
     
     // Activities collection rules (legacy admin audit log)
     match /activities/{activityId} {
-      // Only admins and moderators can read activities
-      allow read: if isModerator();
+      // Security and Admins can read activities
+      allow read: if isSecurityOrAdmin();
       
-      // Only system (admin operations) can create activities
-      allow create: if isAdmin();
+      // Security and Admins can create activities
+      allow create: if isSecurityOrAdmin();
       
       // No updates or deletes allowed on activities (audit trail)
       allow update, delete: if false;

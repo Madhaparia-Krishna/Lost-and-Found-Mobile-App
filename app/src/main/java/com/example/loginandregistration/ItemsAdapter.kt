@@ -5,20 +5,17 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ItemsAdapter : RecyclerView.Adapter<ItemsAdapter.ItemViewHolder>() {
+class ItemsAdapter : ListAdapter<LostFoundItem, ItemsAdapter.ItemViewHolder>(ItemDiffCallback()) {
 
-    private var items = listOf<LostFoundItem>()
     // It's more efficient to create the SimpleDateFormat instance once
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-
-    fun updateItems(newItems: List<LostFoundItem>) {
-        items = newItems
-        notifyDataSetChanged()
-    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -27,10 +24,8 @@ class ItemsAdapter : RecyclerView.Adapter<ItemsAdapter.ItemViewHolder>() {
     }
 
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
-        holder.bind(items[position], dateFormat)
+        holder.bind(getItem(position), dateFormat)
     }
-
-    override fun getItemCount() = items.size
 
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val ivItemIcon: ImageView = itemView.findViewById(R.id.iv_item_icon)
@@ -64,12 +59,32 @@ class ItemsAdapter : RecyclerView.Adapter<ItemsAdapter.ItemViewHolder>() {
                 tvItemStatus.setBackgroundColor(context.getColor(R.color.found_tag))
             }
 
-            // Set default icon based on item type
-            // You can enhance this to show actual images later
-            ivItemIcon.setImageResource(
-                if (item.name.lowercase().contains("phone")) R.drawable.ic_phone
-                else R.drawable.ic_item_default
-            )
+            // Load image using Glide with placeholder and error handling
+            // Handle nullable imageUrl properly
+            if (!item.imageUrl.isNullOrEmpty()) {
+                Glide.with(context)
+                    .load(item.imageUrl)
+                    .placeholder(R.drawable.ic_image_placeholder)
+                    .error(R.drawable.ic_item_default)
+                    .centerCrop()
+                    .into(ivItemIcon)
+            } else {
+                // Set default icon based on item type if no image URL
+                ivItemIcon.setImageResource(
+                    if (item.name.lowercase().contains("phone")) R.drawable.ic_phone
+                    else R.drawable.ic_item_default
+                )
+            }
+        }
+    }
+    
+    class ItemDiffCallback : DiffUtil.ItemCallback<LostFoundItem>() {
+        override fun areItemsTheSame(oldItem: LostFoundItem, newItem: LostFoundItem): Boolean {
+            return oldItem.id == newItem.id
+        }
+        
+        override fun areContentsTheSame(oldItem: LostFoundItem, newItem: LostFoundItem): Boolean {
+            return oldItem == newItem
         }
     }
 }

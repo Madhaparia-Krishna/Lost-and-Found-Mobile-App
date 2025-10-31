@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.loginandregistration.R
@@ -235,12 +236,11 @@ class AdminUsersFragment : Fragment() {
     }
     
     private fun showUserDetails(user: AdminUser) {
-        // Navigate to UserDetailsFragment
-        val fragment = UserDetailsFragment.newInstance(user.uid)
-        parentFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, fragment)
-            .addToBackStack(null)
-            .commit()
+        // Navigate to UserDetailsFragment using Navigation component
+        val bundle = Bundle().apply {
+            putString("user_id", user.uid)
+        }
+        findNavController().navigate(R.id.userDetailsFragment, bundle)
     }
     
     enum class StatusFilter {

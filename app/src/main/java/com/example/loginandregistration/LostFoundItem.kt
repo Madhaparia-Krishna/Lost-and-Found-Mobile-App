@@ -2,10 +2,12 @@ package com.example.loginandregistration
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.PropertyName
+import com.google.firebase.firestore.IgnoreExtraProperties
 import java.io.Serializable
 import java.util.*
 import com.google.firebase.firestore.DocumentId
 
+@IgnoreExtraProperties
 data class LostFoundItem(
     var id: String = "", // Important: To hold the Firestore document ID for updates
     val name: String = "",
@@ -21,9 +23,9 @@ data class LostFoundItem(
     var status: String = "Pending", // Add this field with a default value
     val userId: String = "",
     val userEmail: String = "",
-    val imageUrl: String = "",
+    val imageUrl: String? = null,
     val timestamp: Timestamp = Timestamp.now()
 ) : Serializable {
     // Constructor for compatibility with Firestore
-    constructor() : this("", "", "", "", "", true, "", "", "", "", Timestamp.now())
+    constructor() : this("", "", "", "", "", true, "", "", "", null, Timestamp.now())
 }

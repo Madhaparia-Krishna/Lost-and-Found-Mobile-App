@@ -1,6 +1,7 @@
 package com.example.loginandregistration
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,9 +10,16 @@ import android.widget.EditText
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.Timestamp
+import com.example.loginandregistration.utils.EditTextUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 class ReportFragment : Fragment() {
 
@@ -21,6 +29,8 @@ class ReportFragment : Fragment() {
     private lateinit var etContactInfo: EditText
     private lateinit var rgItemType: RadioGroup
     private lateinit var btnSubmit: Button
+    private lateinit var progressBar: android.widget.ProgressBar
+    private lateinit var scrollView: android.widget.ScrollView
 
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -29,6 +39,7 @@ class ReportFragment : Fragment() {
 
     // --- ADD THIS COMPANION OBJECT ---
     companion object {
+        private const val TAG = "ReportFragment"
         private const val ARG_IS_SECURITY = "is_security_creating_report"
 
         /**
@@ -73,6 +84,8 @@ class ReportFragment : Fragment() {
         etContactInfo = view.findViewById(R.id.et_contact_info)
         rgItemType = view.findViewById(R.id.rg_item_type)
         btnSubmit = view.findViewById(R.id.btn_submit)
+        progressBar = view.findViewById(R.id.progress_bar)
+        scrollView = view.findViewById(R.id.scroll_view)
 
         // You can now use the 'isForSecurity' flag to change the UI or logic
         if (isForSecurity) {
@@ -121,22 +134,85 @@ class ReportFragment : Fragment() {
             timestamp = Timestamp.now()
         )
 
-        db.collection("items")
-            .add(item)
-            .addOnSuccessListener {
-                Toast.makeText(context, getString(R.string.item_reported_successfully), Toast.LENGTH_SHORT).show()
-                clearForm()
+        // Use lifecycleScope to launch coroutine on IO dispatcher
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Show loading indicator on Main thread
+                withContext(Dispatchers.Main) {
+                    showLoading()
+                }
+                
+                db.collection("items")
+                    .add(item)
+                    .await()
+                
+                // Show success message on Main thread
+                withContext(Dispatchers.Main) {
+                    hideLoading()
+                    Toast.makeText(context, getString(R.string.item_reported_successfully), Toast.LENGTH_SHORT).show()
+                    clearForm()
+                }
+            } catch (e: FirebaseFirestoreException) {
+                // Handle Firestore-specific errors
+                handleFirestoreError(e)
+            } catch (e: Exception) {
+                // Handle generic errors
+                handleGenericError(e)
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private suspend fun handleFirestoreError(e: FirebaseFirestoreException) {
+        Log.e(TAG, "Firestore error: ${e.code} - ${e.message}", e)
+        
+        withContext(Dispatchers.Main) {
+            hideLoading()
+            
+            val message = when (e.code) {
+                FirebaseFirestoreException.Code.PERMISSION_DENIED -> 
+                    "Access denied. Please check your permissions and try again."
+                FirebaseFirestoreException.Code.UNAVAILABLE -> 
+                    "Network error. Please check your connection and try again."
+                FirebaseFirestoreException.Code.UNAUTHENTICATED -> 
+                    "Authentication required. Please sign in again."
+                else -> 
+                    "Error submitting report: ${e.message}"
             }
+            
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
+    
+    private suspend fun handleGenericError(e: Exception) {
+        Log.e(TAG, "Error submitting report: ${e.message}", e)
+        
+        withContext(Dispatchers.Main) {
+            hideLoading()
+            Toast.makeText(
+                context,
+                "Failed to submit report. Please try again.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     private fun clearForm() {
-        etItemName.text.clear()
-        etDescription.text.clear()
-        etLocation.text.clear()
-        etContactInfo.text.clear()
+        EditTextUtils.safeClear(etItemName)
+        EditTextUtils.safeClear(etDescription)
+        EditTextUtils.safeClear(etLocation)
+        EditTextUtils.safeClear(etContactInfo)
         rgItemType.clearCheck()
+    }
+    
+    private fun showLoading() {
+        progressBar.visibility = View.VISIBLE
+        scrollView.visibility = View.GONE
+        btnSubmit.isEnabled = false
+    }
+    
+    private fun hideLoading() {
+        progressBar.visibility = View.GONE
+        scrollView.visibility = View.VISIBLE
+        btnSubmit.isEnabled = true
     }
 }

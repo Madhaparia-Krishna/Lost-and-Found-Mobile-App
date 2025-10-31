@@ -74,7 +74,7 @@ class ActivityLogAdapter(
             val (iconRes, colorRes) = getIconAndColorForAction(log.actionType)
             ivActionIcon.setImageResource(iconRes)
             ivActionIcon.setColorFilter(ContextCompat.getColor(itemView.context, colorRes))
-            ivActionIcon.background.setTint(ContextCompat.getColor(itemView.context, getBackgroundColorForAction(log.actionType)))
+            ivActionIcon.background.setTint(getBackgroundColorForAction(log.actionType))
             
             // Set target info if available
             if (log.targetId.isNotBlank()) {

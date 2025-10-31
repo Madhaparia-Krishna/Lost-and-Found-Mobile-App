@@ -36,9 +36,10 @@ android {
     }
 
     // --- FIX START ---
-    // Add this block to enable View Binding
+    // Add this block to enable View Binding and BuildConfig
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
     // --- FIX END ---
 }
@@ -55,6 +56,10 @@ dependencies {
     implementation("com.google.firebase:firebase-storage-ktx") // For image storage
     implementation("com.google.firebase:firebase-messaging-ktx") // For FCM push notifications
     implementation("com.github.bumptech.glide:glide:4.16.0") // For image loading
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0") // Glide annotation processor
+    
+    // Splash Screen API for Android 12+
+    implementation("androidx.core:core-splashscreen:1.0.1")
     
     // Admin Dashboard Dependencies
     implementation("androidx.recyclerview:recyclerview:1.3.2")
@@ -65,8 +70,14 @@ dependencies {
     implementation("androidx.navigation:navigation-ui-ktx:2.7.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0") // For lifecycleScope
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.work:work-runtime-ktx:2.9.0") // For background jobs
+    
+    // Kotlin Coroutines Dependencies
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3") // For Firebase await()
     
     // PDF Generation Dependencies
     implementation("com.itextpdf:itext7-core:7.2.5") // For PDF generation

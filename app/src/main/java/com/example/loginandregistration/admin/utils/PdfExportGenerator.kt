@@ -79,20 +79,30 @@ class PdfExportGenerator(private val context: Context) {
             val directory = getExportDirectory()
             val file = File(directory, fileName)
             
+            // Use try-finally to ensure resources are properly closed
             val writer = PdfWriter(file)
-            val pdfDoc = PdfDocument(writer)
-            val document = Document(pdfDoc)
+            try {
+                val pdfDoc = PdfDocument(writer)
+                try {
+                    val document = Document(pdfDoc)
+                    try {
+                        // Add header
+                        addDocumentHeader(document, title, dateRange, generatedBy)
 
-            // Add header
-            addDocumentHeader(document, title, dateRange, generatedBy)
+                        // Add content
+                        content(document)
 
-            // Add content
-            content(document)
-
-            // Add footer
-            addDocumentFooter(document)
-
-            document.close()
+                        // Add footer
+                        addDocumentFooter(document)
+                    } finally {
+                        document.close()
+                    }
+                } finally {
+                    pdfDoc.close()
+                }
+            } finally {
+                writer.close()
+            }
             
             Result.success(file.absolutePath)
         } catch (e: Exception) {
@@ -248,6 +258,28 @@ class PdfExportGenerator(private val context: Context) {
     private fun formatDateTime(timestamp: Long): String {
         return if (timestamp > 0) {
             dateFormat.format(Date(timestamp))
+        } else {
+            "N/A"
+        }
+    }
+
+    /**
+     * Formats a Firebase Timestamp to a readable date string
+     */
+    private fun formatDate(timestamp: com.google.firebase.Timestamp?): String {
+        return if (timestamp != null) {
+            dateOnlyFormat.format(timestamp.toDate())
+        } else {
+            "N/A"
+        }
+    }
+
+    /**
+     * Formats a Firebase Timestamp to a readable date-time string
+     */
+    private fun formatDateTime(timestamp: com.google.firebase.Timestamp?): String {
+        return if (timestamp != null) {
+            dateFormat.format(timestamp.toDate())
         } else {
             "N/A"
         }
@@ -423,7 +455,7 @@ class PdfExportGenerator(private val context: Context) {
                         if (user.isBlocked) "Blocked" else "Active",
                         "${user.itemsReported}/${user.itemsFound}/${user.itemsClaimed}",
                         formatDate(user.createdAt),
-                        if (user.lastLoginAt > 0) formatDate(user.lastLoginAt) else "Never"
+                        if (user.lastLoginAt != null) formatDate(user.lastLoginAt) else "Never"
                     )
                 }
                 
@@ -779,8 +811,8 @@ class PdfExportGenerator(private val context: Context) {
                     "Avg Response Time" to avgResponseTime,
                     "Items with Status Changes" to itemsWithStatusChanges.size.toString(),
                     "Active Users (Last 30 Days)" to users.count { 
-                        it.lastActivityAt > 0 && 
-                        (System.currentTimeMillis() - it.lastActivityAt) < (30L * 24 * 60 * 60 * 1000)
+                        it.lastActivityAt != null && 
+                        (System.currentTimeMillis() - it.lastActivityAt.toDate().time) < (30L * 24 * 60 * 60 * 1000)
                     }.toString()
                 )
                 

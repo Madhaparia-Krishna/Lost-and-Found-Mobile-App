@@ -7,10 +7,18 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 
 class SecurityDashboardFragment : Fragment() {
@@ -46,28 +54,47 @@ class SecurityDashboardFragment : Fragment() {
     }
 
     private fun fetchReports() {
-        // Fetch all items, ordered by timestamp so newest are first
-        db.collection("items")
+        // Use lifecycleScope to launch coroutine tied to fragment lifecycle
+        viewLifecycleOwner.lifecycleScope.launch {
+            // Collect reports from Flow on IO dispatcher, update UI on Main
+            getReportsFlow()
+                .flowOn(Dispatchers.IO)
+                .collect { reports ->
+                    // Update UI on Main thread
+                    withContext(Dispatchers.Main) {
+                        reportList.clear()
+                        reportList.addAll(reports)
+                        reportAdapter.notifyDataSetChanged()
+                    }
+                }
+        }
+    }
+    
+    private fun getReportsFlow() = callbackFlow {
+        val listener = db.collection("items")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshots, e ->
                 if (e != null) {
-                    Toast.makeText(context, "Failed to load reports: ${e.message}", Toast.LENGTH_SHORT).show()
+                    // Show error on main thread
+                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                        Toast.makeText(context, "Failed to load reports: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                    close(e)
                     return@addSnapshotListener
                 }
 
                 if (snapshots != null) {
-                    reportList.clear()
-                    for (doc in snapshots.documents) {
-                        val report = doc.toObject(LostFoundItem::class.java)
-                        // It's crucial to also get the document ID for updates
-                        if (report != null) {
-                            report.id = doc.id
-                            reportList.add(report)
+                    val reports = snapshots.documents.mapNotNull { doc ->
+                        doc.toObject(LostFoundItem::class.java)?.apply {
+                            id = doc.id
                         }
                     }
-                    reportAdapter.notifyDataSetChanged()
+                    trySend(reports)
                 }
             }
+        
+        // Remove listener when flow is cancelled
+        awaitClose { listener.remove() }
     }
 
     private fun approveReport(report: LostFoundItem) {
@@ -83,15 +110,26 @@ class SecurityDashboardFragment : Fragment() {
             Toast.makeText(context, "Cannot update report: Missing ID", Toast.LENGTH_SHORT).show()
             return
         }
-        // Update the 'status' field of the specific document
-        db.collection("items").document(report.id)
-            .update("status", newStatus)
-            .addOnSuccessListener {
-                Toast.makeText(context, "Report status updated to '$newStatus'", Toast.LENGTH_SHORT).show()
+        
+        // Use lifecycleScope to launch coroutine on IO dispatcher
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Update the 'status' field of the specific document
+                db.collection("items").document(report.id)
+                    .update("status", newStatus)
+                    .await()
+                
+                // Show success message on Main thread
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Report status updated to '$newStatus'", Toast.LENGTH_SHORT).show()
+                }
                 // The addSnapshotListener will automatically refresh the list
+            } catch (e: Exception) {
+                // Show error message on Main thread
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Failed to update status: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(context, "Failed to update status: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+        }
     }
 }

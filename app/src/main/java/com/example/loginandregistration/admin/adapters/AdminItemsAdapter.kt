@@ -76,8 +76,8 @@ class AdminItemsAdapter(
                 }
             }
             
-            // Load image
-            if (item.imageUrl.isNotEmpty()) {
+            // Load image - handle nullable imageUrl properly
+            if (!item.imageUrl.isNullOrEmpty()) {
                 Glide.with(itemView.context)
                     .load(item.imageUrl)
                     .placeholder(R.drawable.ic_image_placeholder)
