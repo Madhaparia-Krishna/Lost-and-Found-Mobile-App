@@ -18,6 +18,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var bottomNav: BottomNavigationView
+    private var keepSplashScreen = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before calling super.onCreate()
@@ -28,8 +29,14 @@ class MainActivity : AppCompatActivity() {
         // Set theme back to regular theme (for Android 11 and below)
         setTheme(R.style.Theme_LoginAndRegistration)
         
-        // Set condition to keep splash screen visible (false = dismiss immediately after app is ready)
-        splashScreen.setKeepOnScreenCondition { false }
+        // Set condition to keep splash screen visible
+        splashScreen.setKeepOnScreenCondition { keepSplashScreen }
+        
+        // Launch coroutine to dismiss splash screen after delay
+        lifecycleScope.launch {
+            kotlinx.coroutines.delay(1500)
+            keepSplashScreen = false
+        }
         
         auth = Firebase.auth
 
@@ -59,7 +66,6 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.nav_home -> replaceFragment(HomeFragment())
                 R.id.nav_browse -> replaceFragment(BrowseFragment())
-                R.id.nav_report -> replaceFragment(ReportFragment())
                 R.id.nav_profile -> replaceFragment(ProfileFragment())
                 else -> false
             }

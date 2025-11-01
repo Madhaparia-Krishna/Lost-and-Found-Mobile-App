@@ -3,51 +3,32 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Lost and Found Icon - Magnifying Glass with Item -->
-    <!-- Safe zone is 66dp circle centered at 54,54 -->
     
-    <!-- Magnifying Glass Circle -->
+    <!-- Lost & Found Icon - Magnifying glass with location pin -->
+    <!-- Safe zone: 66dp circle centered at 54,54 -->
+    
+    <!-- Magnifying glass circle -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,30
-                         a18,18 0 1,1 0,36
-                         a18,18 0 1,1 0,-36z" />
+        android:pathData="M 48,32 A 16,16 0 1,0 48,64 A 16,16 0 1,0 48,32 Z M 48,60 A 12,12 0 1,1 48,36 A 12,12 0 1,1 48,60 Z" />
     
-    <!-- Magnifying Glass Handle -->
+    <!-- Magnifying glass handle -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M66,60
-                         L76,70
-                         a3,3 0 0,1 0,4.24
-                         a3,3 0 0,1 -4.24,0
-                         L62,64.24
-                         z" />
+        android:pathData="M 59,59 L 57.2,57.2 L 68,68 L 72,72 L 75.8,68.2 L 72,64.2 L 59,59 Z" />
     
-    <!-- Lost Item Symbol (Box/Package) inside magnifying glass -->
+    <!-- Location pin inside magnifying glass -->
     <path
-        android:fillColor="#8B7ED8"
-        android:pathData="M48,42
-                         h12
-                         v12
-                         h-12
-                         z" />
+        android:fillColor="#FFD700"
+        android:pathData="M 48,40 C 45.8,40 44,41.8 44,44 C 44,46.8 48,52 48,52 C 48,52 52,46.8 52,44 C 52,41.8 50.2,40 48,40 Z M 48,45.5 C 47.2,45.5 46.5,44.8 46.5,44 C 46.5,43.2 47.2,42.5 48,42.5 C 48.8,42.5 49.5,43.2 49.5,44 C 49.5,44.8 48.8,45.5 48,45.5 Z" />
     
-    <!-- Box detail lines -->
+    <!-- Decorative sparkle elements -->
     <path
-        android:fillColor="#6B5B95"
-        android:strokeWidth="1"
-        android:pathData="M54,42 L54,54
-                         M48,48 L60,48" />
-    
-    <!-- Question mark accent (representing "lost") -->
+        android:fillColor="#FFD700"
+        android:fillAlpha="0.8"
+        android:pathData="M 38,36 L 36,38 L 38,40 L 40,38 Z" />
     <path
-        android:fillColor="#8B7ED8"
-        android:pathData="M68,36
-                         a3,3 0 1,1 0,6
-                         a3,3 0 1,1 0,-6z
-                         M68,44
-                         h0.5
-                         v3
-                         h-0.5
-                         z" />
+        android:fillColor="#FFD700"
+        android:fillAlpha="0.8"
+        android:pathData="M 58,36 L 56,38 L 58,40 L 60,38 Z" />
 </vector>

@@ -3,16 +3,23 @@ package com.example.loginandregistration
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.example.loginandregistration.utils.UserRoleManager
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ItemsAdapter : ListAdapter<LostFoundItem, ItemsAdapter.ItemViewHolder>(ItemDiffCallback()) {
+class ItemsAdapter(
+    private val currentUserId: String = "",
+    private val userEmail: String = "",
+    private val onClaimClickListener: ((LostFoundItem) -> Unit)? = null,
+    private val pendingClaimItemIds: Set<String> = emptySet()
+) : ListAdapter<LostFoundItem, ItemsAdapter.ItemViewHolder>(ItemDiffCallback()) {
 
     // It's more efficient to create the SimpleDateFormat instance once
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -24,7 +31,15 @@ class ItemsAdapter : ListAdapter<LostFoundItem, ItemsAdapter.ItemViewHolder>(Ite
     }
 
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
-        holder.bind(getItem(position), dateFormat)
+        val canViewSensitiveInfo = UserRoleManager.canViewSensitiveInfo(userEmail)
+        holder.bind(
+            getItem(position), 
+            dateFormat, 
+            currentUserId, 
+            canViewSensitiveInfo,
+            onClaimClickListener,
+            pendingClaimItemIds
+        )
     }
 
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -33,23 +48,40 @@ class ItemsAdapter : ListAdapter<LostFoundItem, ItemsAdapter.ItemViewHolder>(Ite
         private val tvItemLocation: TextView = itemView.findViewById(R.id.tv_item_location)
         private val tvItemStatus: TextView = itemView.findViewById(R.id.tv_item_status)
         private val tvItemDate: TextView = itemView.findViewById(R.id.tv_item_date)
+        private val btnRequestItem: Button = itemView.findViewById(R.id.btn_request_item)
 
         // Pass the date formatter here to avoid creating it repeatedly in a loop
-        fun bind(item: LostFoundItem, dateFormat: SimpleDateFormat) {
+        fun bind(
+            item: LostFoundItem, 
+            dateFormat: SimpleDateFormat,
+            currentUserId: String,
+            canViewSensitiveInfo: Boolean,
+            onClaimClickListener: ((LostFoundItem) -> Unit)?,
+            pendingClaimItemIds: Set<String>
+        ) {
             tvItemName.text = item.name
-            tvItemLocation.text = item.location
             tvItemStatus.text = if (item.isLost) "Lost" else "Found"
 
-            // --- FIX START ---
-            // Safely handle the nullable timestamp.
-            // The 'let' block only executes if item.timestamp is not null.
-            item.timestamp?.let { timestamp ->
-                tvItemDate.text = dateFormat.format(timestamp.toDate())
-            } ?: run {
-                // This 'run' block executes if item.timestamp is null.
-                tvItemDate.text = "Date not available"
+            // Role-based visibility for sensitive fields
+            // Requirements: 10.1, 10.2, 10.3, 10.4, 10.5
+            if (canViewSensitiveInfo) {
+                // Security/Admin users can see all fields
+                tvItemLocation.visibility = View.VISIBLE
+                tvItemDate.visibility = View.VISIBLE
+                
+                tvItemLocation.text = item.location
+                
+                // Safely handle the nullable timestamp
+                item.timestamp?.let { timestamp ->
+                    tvItemDate.text = dateFormat.format(timestamp.toDate())
+                } ?: run {
+                    tvItemDate.text = "Date not available"
+                }
+            } else {
+                // Regular users cannot see location and date
+                tvItemLocation.visibility = View.GONE
+                tvItemDate.visibility = View.GONE
             }
-            // --- FIX END ---
 
             // Set status background color
             val context = itemView.context
@@ -74,6 +106,24 @@ class ItemsAdapter : ListAdapter<LostFoundItem, ItemsAdapter.ItemViewHolder>(Ite
                     if (item.name.lowercase().contains("phone")) R.drawable.ic_phone
                     else R.drawable.ic_item_default
                 )
+            }
+
+            // Handle claim button visibility and click
+            // Requirements: 5.1, 5.2
+            // Show button only for approved found items
+            // Hide button if user already has pending claim for the item
+            val shouldShowClaimButton = !item.isLost && 
+                                       item.status == "Approved" && 
+                                       currentUserId.isNotEmpty() &&
+                                       item.userId != currentUserId &&
+                                       !pendingClaimItemIds.contains(item.id)
+            
+            btnRequestItem.visibility = if (shouldShowClaimButton) View.VISIBLE else View.GONE
+            
+            if (shouldShowClaimButton) {
+                btnRequestItem.setOnClickListener {
+                    onClaimClickListener?.invoke(item)
+                }
             }
         }
     }

@@ -34,6 +34,8 @@ class Login : AppCompatActivity() {
     private lateinit var oneTapClient: SignInClient
     private lateinit var signInRequest: BeginSignInRequest
     // --- CHANGE END ---
+    
+    private var keepSplashScreen = true
 
     companion object {
         private const val TAG = "LoginActivity"
@@ -74,8 +76,14 @@ class Login : AppCompatActivity() {
         // Set theme back to regular theme (for Android 11 and below)
         setTheme(R.style.Theme_LoginAndRegistration)
         
-        // Set condition to keep splash screen visible (false = dismiss immediately after app is ready)
-        splashScreen.setKeepOnScreenCondition { false }
+        // Set condition to keep splash screen visible
+        splashScreen.setKeepOnScreenCondition { keepSplashScreen }
+        
+        // Launch coroutine to dismiss splash screen after delay
+        lifecycleScope.launch {
+            kotlinx.coroutines.delay(1500)
+            keepSplashScreen = false
+        }
         
         setContentView(R.layout.activity_login)
 
@@ -103,6 +111,7 @@ class Login : AppCompatActivity() {
         val btnLogin = findViewById<Button>(R.id.btnLogin)
         val tvRegister = findViewById<TextView>(R.id.tvRegister)
         val btnGoogleLogin = findViewById<Button>(R.id.btnGoogleLogin)
+        val tvForgotPassword = findViewById<TextView>(R.id.tvForgotPassword)
 
         // Set Click Listeners
         btnLogin.setOnClickListener {
@@ -134,6 +143,51 @@ class Login : AppCompatActivity() {
         btnGoogleLogin.setOnClickListener {
             signInWithGoogle()
         }
+
+        tvForgotPassword.setOnClickListener {
+            showForgotPasswordDialog()
+        }
+    }
+
+    private fun showForgotPasswordDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_forgot_password, null)
+        val etResetEmail = dialogView.findViewById<EditText>(R.id.etResetEmail)
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setPositiveButton(R.string.send_reset_email) { _, _ ->
+                val email = etResetEmail.text.toString().trim()
+                if (email.isEmpty()) {
+                    Toast.makeText(this, R.string.error_empty_email, Toast.LENGTH_SHORT).show()
+                } else {
+                    sendPasswordResetEmail(email)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+
+        dialog.show()
+    }
+
+    private fun sendPasswordResetEmail(email: String) {
+        auth.sendPasswordResetEmail(email)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(TAG, "Password reset email sent to: $email")
+                    Toast.makeText(
+                        this,
+                        R.string.password_reset_email_sent,
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Log.w(TAG, "Failed to send password reset email", task.exception)
+                    Toast.makeText(
+                        this,
+                        getString(R.string.password_reset_failed, task.exception?.message ?: getString(R.string.unknown_error)),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
     }
 
     private fun signInWithGoogle() {
@@ -248,17 +302,24 @@ class Login : AppCompatActivity() {
 
     private fun createNewUserDocument(userId: String, email: String?) {
         val db = FirebaseFirestore.getInstance()
-        val userData = hashMapOf(
-            "email" to (email ?: ""),
-            "role" to "user",
-            "createdAt" to com.google.firebase.Timestamp.now()
+        
+        // Create User object with available data
+        val user = User(
+            userId = userId,
+            name = "", // Empty for existing users, they can update in profile
+            email = email ?: "",
+            phone = "", // Empty for existing users, they can update in profile
+            gender = "",
+            fcmToken = "",
+            createdAt = com.google.firebase.Timestamp.now(),
+            updatedAt = com.google.firebase.Timestamp.now()
         )
         
         // Use lifecycleScope to launch coroutine on IO dispatcher
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 db.collection("users").document(userId)
-                    .set(userData)
+                    .set(user)
                     .await()
                 Log.d(TAG, "User document created successfully")
             } catch (e: Exception) {

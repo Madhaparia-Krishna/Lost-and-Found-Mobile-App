@@ -1,32 +1,27 @@
 package com.example.loginandregistration
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
+import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.firestore.Query
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.tabs.TabLayout
+import com.google.android.material.tabs.TabLayoutMediator
 
+/**
+ * Browse fragment with tabbed interface for different item categories
+ * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 7.1, 7.2, 7.3, 7.4, 7.5
+ */
 class BrowseFragment : Fragment() {
     
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var adapter: ItemsAdapter
-    private lateinit var progressBar: android.widget.ProgressBar
-    private val db = FirebaseFirestore.getInstance()
+    private lateinit var tabLayout: TabLayout
+    private lateinit var viewPager: ViewPager2
+    private lateinit var searchView: SearchView
+    private lateinit var pagerAdapter: BrowseViewPagerAdapter
+    
+    private var currentSearchQuery: String = ""
     
     companion object {
         private const val TAG = "BrowseFragment"
@@ -43,107 +38,78 @@ class BrowseFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        recyclerView = view.findViewById(R.id.recycler_view_items)
-        progressBar = view.findViewById(R.id.progress_bar)
-        recyclerView.layoutManager = LinearLayoutManager(context)
+        tabLayout = view.findViewById(R.id.tab_layout)
+        viewPager = view.findViewById(R.id.view_pager)
+        searchView = view.findViewById(R.id.search_view)
         
-        adapter = ItemsAdapter()
-        recyclerView.adapter = adapter
-        
-        loadItems()
+        setupViewPager()
+        setupSearchView()
     }
     
-    private fun loadItems() {
-        // Use lifecycleScope to launch coroutine tied to fragment lifecycle
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                // Show loading indicator
-                showLoading()
-                
-                // Collect items from Flow on IO dispatcher, update UI on Main
-                getItemsFlow()
-                    .flowOn(Dispatchers.IO)
-                    .catch { e ->
-                        // Handle errors in the flow
-                        hideLoading()
-                        handleError(e)
-                    }
-                    .collect { items ->
-                        // Update UI on Main thread
-                        withContext(Dispatchers.Main) {
-                            hideLoading()
-                            adapter.submitList(items)
-                        }
-                    }
-            } catch (e: Exception) {
-                hideLoading()
-                handleError(e)
+    private fun setupViewPager() {
+        // Create adapter with four tabs
+        // Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+        pagerAdapter = BrowseViewPagerAdapter(this)
+        viewPager.adapter = pagerAdapter
+        
+        // Connect TabLayout with ViewPager2
+        TabLayoutMediator(tabLayout, viewPager) { tab, position ->
+            tab.text = pagerAdapter.getTabTitle(position)
+        }.attach()
+        
+        // Listen for tab changes to apply search query to new tab
+        // Requirement: 7.5
+        viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                // Apply current search query to newly selected tab
+                applySearchToCurrentTab(currentSearchQuery)
             }
+        })
+    }
+    
+    private fun setupSearchView() {
+        // Implement search filtering with real-time updates
+        // Requirements: 7.2, 7.3, 7.4, 7.5
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                // Apply search when user submits
+                val searchQuery = query ?: ""
+                currentSearchQuery = searchQuery
+                applySearchToCurrentTab(searchQuery)
+                return true
+            }
+            
+            override fun onQueryTextChange(newText: String?): Boolean {
+                // Apply search in real-time as user types
+                // Requirement: 7.2
+                val searchQuery = newText ?: ""
+                currentSearchQuery = searchQuery
+                applySearchToCurrentTab(searchQuery)
+                return true
+            }
+        })
+        
+        // Clear search when close button is clicked
+        searchView.setOnCloseListener {
+            currentSearchQuery = ""
+            applySearchToCurrentTab("")
+            false
         }
     }
     
-    private fun getItemsFlow() = callbackFlow {
-        val listener = db.collection("items")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    // Log the error and close flow
-                    Log.e(TAG, "Firestore snapshot listener error: ${e.message}", e)
-                    close(e)
-                    return@addSnapshotListener
-                }
-                
-                // Use mapNotNull to skip problematic items during deserialization
-                val items = snapshot?.documents?.mapNotNull { doc ->
-                    try {
-                        doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error deserializing item ${doc.id}: ${e.message}", e)
-                        null  // Skip problematic items
-                    }
-                } ?: emptyList()
-                
-                // Send items to flow
-                trySend(items)
-            }
+    /**
+     * Applies the search query to the currently visible tab fragment
+     * Requirements: 7.3, 7.5
+     */
+    private fun applySearchToCurrentTab(query: String) {
+        val currentPosition = viewPager.currentItem
+        // ViewPager2 uses a specific tag format: f{containerId}{position}
+        val fragmentTag = "f${viewPager.id}${currentPosition}"
+        val fragment = childFragmentManager.findFragmentByTag(fragmentTag)
         
-        // Remove listener when flow is cancelled
-        awaitClose { listener.remove() }
-    }
-    
-    private suspend fun handleError(e: Throwable) {
-        Log.e(TAG, "Error loading items: ${e.message}", e)
-        
-        withContext(Dispatchers.Main) {
-            hideLoading()
-            
-            val message = when (e) {
-                is FirebaseFirestoreException -> {
-                    when (e.code) {
-                        FirebaseFirestoreException.Code.PERMISSION_DENIED -> 
-                            "Access denied. Please check your permissions and try again."
-                        FirebaseFirestoreException.Code.UNAVAILABLE -> 
-                            "Network error. Please check your connection and try again."
-                        FirebaseFirestoreException.Code.UNAUTHENTICATED -> 
-                            "Authentication required. Please sign in again."
-                        else -> 
-                            "Error loading items: ${e.message}"
-                    }
-                }
-                else -> "Failed to load items. Please try again."
-            }
-            
-            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+        if (fragment is SearchableFragment) {
+            fragment.applySearchFilter(query)
         }
-    }
-    
-    private fun showLoading() {
-        progressBar.visibility = View.VISIBLE
-        recyclerView.visibility = View.GONE
-    }
-    
-    private fun hideLoading() {
-        progressBar.visibility = View.GONE
-        recyclerView.visibility = View.VISIBLE
     }
 }

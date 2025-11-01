@@ -30,13 +30,13 @@ class SecurityMainActivity : AppCompatActivity() {
                     // Security 'home' is the dashboard to view all reports
                     selectedFragment = SecurityDashboardFragment()
                 }
+                R.id.nav_claims -> {
+                    // Claim review interface for security
+                    selectedFragment = SecurityClaimReviewFragment()
+                }
                 R.id.nav_browse -> {
                     // You can keep browse or replace with another security function
                     selectedFragment = BrowseFragment()
-                }
-                R.id.nav_report -> {
-                    // This is for creating a new "Found" report as security
-                    selectedFragment = ReportFragment.newInstance(isSecurityCreatingReport = true)
                 }
                 R.id.nav_profile -> {
                     // Profile for password change and logout

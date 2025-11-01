@@ -14,6 +14,8 @@ data class LostFoundItem(
     val description: String = "",
     val location: String = "",
     val contactInfo: String = "",
+    val category: String = "",
+    val dateLostFound: Timestamp? = null,
     
     // Map Firestore "lost found" field to isLost property
     @get:PropertyName("lost found")
@@ -21,11 +23,13 @@ data class LostFoundItem(
     var isLost: Boolean = true, // true for lost, false for found
     
     var status: String = "Pending", // Add this field with a default value
+    val approvedBy: String = "",
+    val approvalDate: Timestamp? = null,
     val userId: String = "",
     val userEmail: String = "",
     val imageUrl: String? = null,
     val timestamp: Timestamp = Timestamp.now()
 ) : Serializable {
     // Constructor for compatibility with Firestore
-    constructor() : this("", "", "", "", "", true, "", "", "", null, Timestamp.now())
+    constructor() : this("", "", "", "", "", "", null, true, "", "", null, "", "", null, Timestamp.now())
 }
