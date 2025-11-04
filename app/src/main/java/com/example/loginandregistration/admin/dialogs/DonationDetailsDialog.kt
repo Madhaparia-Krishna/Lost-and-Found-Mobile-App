@@ -115,7 +115,7 @@ class DonationDetailsDialog : DialogFragment() {
                         "On: ${sdf.format(Date(item.markedReadyAt))}"
                 tvDonatedInfo.visibility = View.VISIBLE
                 tvDonatedInfo.text = "Donated to: ${item.donationRecipient}\n" +
-                        "Value: $${String.format("%.2f", item.estimatedValue)}\n" +
+                        "Value: $${String.format(Locale.getDefault(), "%.2f", item.estimatedValue)}\n" +
                         "Donated by: ${item.donatedBy}\n" +
                         "On: ${sdf.format(Date(item.donatedAt))}"
                 btnMarkReady.visibility = View.GONE

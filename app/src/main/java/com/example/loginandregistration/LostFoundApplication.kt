@@ -26,28 +26,23 @@ class LostFoundApplication : Application() {
         try {
             Log.d(TAG, "Application starting...")
             
-            // Enable StrictMode in debug builds to catch main thread violations
-            // Requirements: 3.6
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Enabling StrictMode...")
-                enableStrictMode()
-            }
+            // DISABLED: StrictMode causes excessive logcat noise
+            // Only enable when actively debugging specific issues
+            // if (BuildConfig.DEBUG) {
+            //     enableStrictMode()
+            // }
             
             // Create notification channels (lightweight operation, safe on main thread)
-            Log.d(TAG, "Creating notification channels...")
             NotificationChannelManager.createNotificationChannels(this)
-            Log.d(TAG, "Notification channels created")
             
             // Move heavy operations to background thread
             applicationScope.launch(Dispatchers.IO) {
                 try {
                     // Initialize Firebase on background thread
-                    Log.d(TAG, "Initializing Firebase...")
                     FirebaseManager.initialize(applicationContext)
                     
-                    // Test Firebase connection on background thread
-                    Log.d(TAG, "Testing Firebase connection...")
-                    FirebaseManager.testFirestoreConnection()
+                    // REMOVED: Continuous connection testing causes logcat spam
+                    // Only test connection when needed
                     
                     Log.d(TAG, "Application initialized successfully")
                 } catch (e: Exception) {

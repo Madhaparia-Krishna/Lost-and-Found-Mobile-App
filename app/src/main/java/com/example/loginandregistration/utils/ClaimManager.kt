@@ -56,7 +56,7 @@ object ClaimManager {
                 itemName = itemName,
                 userId = userId,
                 userEmail = user.email,
-                userName = user.name,
+                userName = user.displayName.ifEmpty { user.email },
                 userPhone = user.phone,
                 reason = reason,
                 proofDescription = proofDescription,

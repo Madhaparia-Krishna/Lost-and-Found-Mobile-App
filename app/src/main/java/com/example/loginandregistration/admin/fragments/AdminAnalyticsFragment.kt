@@ -104,13 +104,13 @@ class AdminAnalyticsFragment : Fragment() {
         tvReadyForDonation.text = stats.readyForDonation.toString()
         
         // Display total donation value
-        tvTotalDonationValue.text = "$${String.format("%.2f", stats.totalValue)}"
+        tvTotalDonationValue.text = "$${String.format(Locale.getDefault(), "%.2f", stats.totalValue)}"
         
         // Display average item age
-        tvAverageItemAge.text = "${String.format("%.1f", stats.averageItemAge)} days"
+        tvAverageItemAge.text = "${String.format(Locale.getDefault(), "%.1f", stats.averageItemAge)} days"
         
         // Display donation rate
-        tvDonationRate.text = "${String.format("%.1f", stats.getDonationRate())}%"
+        tvDonationRate.text = "${String.format(Locale.getDefault(), "%.1f", stats.getDonationRate())}%"
         
         // Display most donated category
         tvMostDonatedCategory.text = stats.mostDonatedCategory.ifEmpty { "N/A" }

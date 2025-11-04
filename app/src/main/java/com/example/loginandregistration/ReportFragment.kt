@@ -1,10 +1,13 @@
 package com.example.loginandregistration
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
@@ -20,6 +23,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
@@ -27,6 +31,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.Timestamp
+import com.example.loginandregistration.admin.utils.StoragePermissionHelper
 import com.example.loginandregistration.utils.EditTextUtils
 import com.example.loginandregistration.utils.NotificationManager
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +82,25 @@ class ReportFragment : Fragment() {
                 selectedImageUri = uri
                 displayImagePreview(uri)
             }
+        }
+    }
+    
+    // Permission launcher for storage access
+    // Requirements: 4.2, 4.3, 4.4, 4.5
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            // Permission granted, proceed with image picker
+            launchImagePicker()
+        } else {
+            // Permission denied
+            Toast.makeText(
+                context,
+                "Storage permission is required to select images",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -241,7 +265,45 @@ class ReportFragment : Fragment() {
         }
     }
     
+    /**
+     * Opens image picker with version-aware permission handling
+     * Requirements: 4.2, 4.3, 4.4, 4.5
+     */
     private fun openImagePicker() {
+        // Check if permissions are needed and granted
+        if (hasStoragePermission()) {
+            launchImagePicker()
+        } else {
+            // Request permissions based on Android version
+            requestStoragePermission()
+        }
+    }
+    
+    /**
+     * Checks if storage permissions are granted based on Android version
+     * Requirements: 4.2, 4.3, 4.4
+     */
+    private fun hasStoragePermission(): Boolean {
+        val permissions = StoragePermissionHelper.getStoragePermissions()
+        return permissions.all { permission ->
+            ContextCompat.checkSelfPermission(requireContext(), permission) == 
+                PackageManager.PERMISSION_GRANTED
+        }
+    }
+    
+    /**
+     * Requests storage permissions based on Android version
+     * Requirements: 4.2, 4.3, 4.4, 4.5
+     */
+    private fun requestStoragePermission() {
+        val permissions = StoragePermissionHelper.getStoragePermissions()
+        permissionLauncher.launch(permissions)
+    }
+    
+    /**
+     * Launches the image picker intent
+     */
+    private fun launchImagePicker() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         intent.type = "image/*"
         imagePickerLauncher.launch(intent)

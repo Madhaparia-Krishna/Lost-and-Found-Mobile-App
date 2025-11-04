@@ -33,7 +33,6 @@ class AdminProfileFragment : Fragment() {
     private lateinit var tvLastLogin: TextView
     private lateinit var btnLogout: Button
     private lateinit var btnRefreshData: Button
-    private lateinit var btnCreateTestData: Button
     
     private val auth = FirebaseAuth.getInstance()
     private val adminRepository = AdminRepository()
@@ -65,7 +64,6 @@ class AdminProfileFragment : Fragment() {
         tvLastLogin = view.findViewById(R.id.tvLastLogin)
         btnLogout = view.findViewById(R.id.btnLogout)
         btnRefreshData = view.findViewById(R.id.btnRefreshData)
-        btnCreateTestData = view.findViewById(R.id.btnCreateTestData)
     }
     
     /**
@@ -152,11 +150,6 @@ class AdminProfileFragment : Fragment() {
         btnRefreshData.setOnClickListener {
             // Refresh dashboard data
             (activity as? com.example.loginandregistration.admin.AdminDashboardActivity)?.refreshData()
-        }
-        
-        btnCreateTestData.setOnClickListener {
-            // Create test data
-            (activity as? com.example.loginandregistration.admin.AdminDashboardActivity)?.createTestData()
         }
     }
     

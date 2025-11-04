@@ -19,9 +19,15 @@ object FirebaseManager {
             // Initialize Firebase if not already initialized
             if (FirebaseApp.getApps(context).isEmpty()) {
                 FirebaseApp.initializeApp(context)
-                Log.d(TAG, "Firebase initialized successfully")
-            } else {
-                Log.d(TAG, "Firebase already initialized")
+                Log.d(TAG, "Firebase initialized")
+                
+                // Enable Firestore offline persistence for better performance
+                val firestore = FirebaseFirestore.getInstance()
+                val settings = FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(true)
+                    .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
+                    .build()
+                firestore.firestoreSettings = settings
             }
             
         } catch (e: Exception) {

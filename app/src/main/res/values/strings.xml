@@ -103,4 +103,22 @@
         <item>Other</item>
     </string-array>
 
+    <!-- Admin Dashboard -->
+    <string name="filter_items">Filter Items</string>
+    <string name="advanced_filters">Advanced Filters</string>
+
+    <!-- Navigation -->
+    <string name="back_button">Navigate back</string>
+
+    <!-- Empty States -->
+    <string name="no_donations">No donations</string>
+    <string name="no_donations_title">No Donations Found</string>
+    <string name="no_donations_message">There are no donations in this category yet.</string>
+    <string name="no_items_title">No Items Found</string>
+    <string name="no_items_message">There are no items matching your criteria.</string>
+    <string name="error_loading_items">Failed to load items</string>
+    <string name="error_loading_donations">Failed to load donations</string>
+    <string name="error_loading_users">Failed to load users</string>
+    <string name="retry">Retry</string>
+
 </resources>

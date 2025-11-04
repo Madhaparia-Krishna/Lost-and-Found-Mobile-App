@@ -412,7 +412,7 @@ class PdfExportGenerator(private val context: Context) {
                 val totalItemsFound = users.sumOf { it.itemsFound }
                 val totalItemsClaimed = users.sumOf { it.itemsClaimed }
                 val avgItemsPerUser = if (totalUsers > 0) {
-                    String.format("%.2f", totalItemsReported.toFloat() / totalUsers)
+                    String.format(Locale.getDefault(), "%.2f", totalItemsReported.toFloat() / totalUsers)
                 } else "0.00"
                 
                 val stats = mapOf(
@@ -434,9 +434,9 @@ class PdfExportGenerator(private val context: Context) {
                 document.add(createSectionHeading("Role Distribution"))
                 
                 val roleStats = mapOf(
-                    "Admin" to "$adminUsers (${if (totalUsers > 0) String.format("%.1f", adminUsers * 100f / totalUsers) else "0"}%)",
-                    "Moderator" to "$moderatorUsers (${if (totalUsers > 0) String.format("%.1f", moderatorUsers * 100f / totalUsers) else "0"}%)",
-                    "User" to "$regularUsers (${if (totalUsers > 0) String.format("%.1f", regularUsers * 100f / totalUsers) else "0"}%)"
+                    "Admin" to "$adminUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", adminUsers * 100f / totalUsers) else "0"}%)",
+                    "Moderator" to "$moderatorUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", moderatorUsers * 100f / totalUsers) else "0"}%)",
+                    "User" to "$regularUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", regularUsers * 100f / totalUsers) else "0"}%)"
                 )
                 
                 document.add(createStatsTable(roleStats))
@@ -652,11 +652,11 @@ class PdfExportGenerator(private val context: Context) {
                 
                 val itemsOverview = mapOf(
                     "Total Items" to totalItems.toString(),
-                    "Lost Items" to "$lostItems (${if (totalItems > 0) String.format("%.1f", lostItems * 100f / totalItems) else "0"}%)",
-                    "Found Items" to "$foundItems (${if (totalItems > 0) String.format("%.1f", foundItems * 100f / totalItems) else "0"}%)",
+                    "Lost Items" to "$lostItems (${if (totalItems > 0) String.format(Locale.getDefault(), "%.1f", lostItems * 100f / totalItems) else "0"}%)",
+                    "Found Items" to "$foundItems (${if (totalItems > 0) String.format(Locale.getDefault(), "%.1f", foundItems * 100f / totalItems) else "0"}%)",
                     "Active Items" to activeItems.toString(),
                     "Returned Items" to returnedItems.toString(),
-                    "Return Rate" to if (totalItems > 0) String.format("%.1f%%", returnedItems * 100f / totalItems) else "0%"
+                    "Return Rate" to if (totalItems > 0) String.format(Locale.getDefault(), "%.1f%%", returnedItems * 100f / totalItems) else "0%"
                 )
                 
                 document.add(createStatsTable(itemsOverview))
@@ -688,12 +688,12 @@ class PdfExportGenerator(private val context: Context) {
                 
                 val totalItemsReported = users.sumOf { it.itemsReported }
                 val avgItemsPerUser = if (totalUsers > 0) {
-                    String.format("%.2f", totalItemsReported.toFloat() / totalUsers)
+                    String.format(Locale.getDefault(), "%.2f", totalItemsReported.toFloat() / totalUsers)
                 } else "0.00"
                 
                 val usersOverview = mapOf(
                     "Total Users" to totalUsers.toString(),
-                    "Active Users" to "$activeUsers (${if (totalUsers > 0) String.format("%.1f", activeUsers * 100f / totalUsers) else "0"}%)",
+                    "Active Users" to "$activeUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", activeUsers * 100f / totalUsers) else "0"}%)",
                     "Blocked Users" to blockedUsers.toString(),
                     "Admin Users" to adminUsers.toString(),
                     "Moderator Users" to moderatorUsers.toString(),
@@ -726,8 +726,8 @@ class PdfExportGenerator(private val context: Context) {
                 
                 val activityOverview = mapOf(
                     "Total Activities" to totalActivities.toString(),
-                    "User Actions" to "$userActions (${if (totalActivities > 0) String.format("%.1f", userActions * 100f / totalActivities) else "0"}%)",
-                    "Admin Actions" to "$adminActions (${if (totalActivities > 0) String.format("%.1f", adminActions * 100f / totalActivities) else "0"}%)",
+                    "User Actions" to "$userActions (${if (totalActivities > 0) String.format(Locale.getDefault(), "%.1f", userActions * 100f / totalActivities) else "0"}%)",
+                    "Admin Actions" to "$adminActions (${if (totalActivities > 0) String.format(Locale.getDefault(), "%.1f", adminActions * 100f / totalActivities) else "0"}%)",
                     "System Events" to systemEvents.toString()
                 )
                 
@@ -761,9 +761,9 @@ class PdfExportGenerator(private val context: Context) {
                     "Total Donated" to completedDonations.toString(),
                     "Pending Review" to pendingDonations.toString(),
                     "Ready for Donation" to readyDonations.toString(),
-                    "Total Value" to String.format("$%.2f", donationStats.totalValue),
-                    "Avg Value Per Item" to String.format("$%.2f", donationStats.getAverageValuePerItem()),
-                    "Donation Rate" to String.format("%.1f%%", donationStats.getDonationRate())
+                    "Total Value" to String.format(Locale.getDefault(), "$%.2f", donationStats.totalValue),
+                    "Avg Value Per Item" to String.format(Locale.getDefault(), "$%.2f", donationStats.getAverageValuePerItem()),
+                    "Donation Rate" to String.format(Locale.getDefault(), "%.1f%%", donationStats.getDonationRate())
                 )
                 
                 document.add(createStatsTable(donationOverview))
@@ -826,7 +826,7 @@ class PdfExportGenerator(private val context: Context) {
                 // Item trends
                 if (returnedItems > 0) {
                     val returnRate = returnedItems * 100f / totalItems
-                    insights.add("• Return rate is ${String.format("%.1f", returnRate)}% - ${
+                    insights.add("• Return rate is ${String.format(Locale.getDefault(), "%.1f", returnRate)}% - ${
                         when {
                             returnRate > 50 -> "Excellent performance"
                             returnRate > 30 -> "Good performance"
@@ -839,7 +839,7 @@ class PdfExportGenerator(private val context: Context) {
                 val engagedUsers = users.count { it.itemsReported > 0 }
                 if (totalUsers > 0) {
                     val engagementRate = engagedUsers * 100f / totalUsers
-                    insights.add("• User engagement rate is ${String.format("%.1f", engagementRate)}%")
+                    insights.add("• User engagement rate is ${String.format(Locale.getDefault(), "%.1f", engagementRate)}%")
                 }
                 
                 // Donation efficiency

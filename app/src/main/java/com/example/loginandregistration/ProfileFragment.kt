@@ -103,9 +103,9 @@ class ProfileFragment : Fragment() {
 
     private fun createUserDocument(userId: String, email: String) {
         val newUser = User(
-            userId = userId,
+            uid = userId,
             email = email,
-            name = "",
+            displayName = "",
             phone = "",
             gender = "",
             fcmToken = "",
@@ -129,7 +129,7 @@ class ProfileFragment : Fragment() {
 
     private fun populateUserData(user: User?) {
         if (user != null) {
-            binding.etName.setText(user.name)
+            binding.etName.setText(user.displayName)
             binding.etEmail.setText(user.email)
             binding.etPhone.setText(user.phone)
             
@@ -177,7 +177,7 @@ class ProfileFragment : Fragment() {
 
         // Update user document in Firestore
         val updates = hashMapOf<String, Any>(
-            "name" to name,
+            "displayName" to name,
             "phone" to phone,
             "gender" to gender,
             "updatedAt" to Timestamp.now()
@@ -189,7 +189,7 @@ class ProfileFragment : Fragment() {
                 hideLoading()
                 // Update current user object
                 currentUser = currentUser?.copy(
-                    name = name,
+                    displayName = name,
                     phone = phone,
                     gender = gender,
                     updatedAt = Timestamp.now()

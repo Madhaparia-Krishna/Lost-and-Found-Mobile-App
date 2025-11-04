@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.example.loginandregistration.R
 import com.example.loginandregistration.admin.models.AdminUser
@@ -28,6 +29,7 @@ class UserDetailsFragment : Fragment() {
     private val viewModel: AdminDashboardViewModel by activityViewModels()
     
     // Views
+    private lateinit var btnBack: android.widget.ImageButton
     private lateinit var ivUserAvatar: ImageView
     private lateinit var tvUserName: TextView
     private lateinit var tvUserEmail: TextView
@@ -82,6 +84,7 @@ class UserDetailsFragment : Fragment() {
     }
     
     private fun initViews(view: View) {
+        btnBack = view.findViewById(R.id.btnBack)
         ivUserAvatar = view.findViewById(R.id.ivUserAvatar)
         tvUserName = view.findViewById(R.id.tvUserName)
         tvUserEmail = view.findViewById(R.id.tvUserEmail)
@@ -100,6 +103,10 @@ class UserDetailsFragment : Fragment() {
     }
     
     private fun setupClickListeners() {
+        btnBack.setOnClickListener {
+            findNavController().navigateUp()
+        }
+        
         btnEditUser.setOnClickListener {
             currentUser?.let { user ->
                 showEditUserDialog(user)

@@ -17,19 +17,23 @@ import com.bumptech.glide.request.RequestOptions
 class GlideConfiguration : AppGlideModule() {
     
     override fun applyOptions(context: Context, builder: GlideBuilder) {
-        // Configure memory cache (10% of available memory)
-        val memoryCacheSizeBytes = 1024 * 1024 * 20 // 20MB
+        // Configure memory cache (40MB for better performance)
+        val memoryCacheSizeBytes = 1024 * 1024 * 40 // 40MB
         builder.setMemoryCache(LruResourceCache(memoryCacheSizeBytes.toLong()))
         
-        // Configure disk cache (100MB)
-        val diskCacheSizeBytes = 1024 * 1024 * 100 // 100MB
+        // Configure disk cache (200MB for more cached images)
+        val diskCacheSizeBytes = 1024 * 1024 * 200 // 200MB
         builder.setDiskCache(InternalCacheDiskCacheFactory(context, diskCacheSizeBytes.toLong()))
         
-        // Set default request options
+        // Set default request options with aggressive caching
         builder.setDefaultRequestOptions(
             RequestOptions()
-                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                .diskCacheStrategy(DiskCacheStrategy.ALL) // Cache both original and resized
+                .skipMemoryCache(false) // Always use memory cache
         )
+        
+        // Set log level to ERROR only to reduce logcat noise
+        builder.setLogLevel(android.util.Log.ERROR)
     }
     
     // Disable manifest parsing for better performance

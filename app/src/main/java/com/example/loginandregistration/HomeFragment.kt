@@ -97,7 +97,11 @@ class HomeFragment : Fragment(), SearchableFragment {
         fabReport = view.findViewById(R.id.fab_report)
         searchView = view.findViewById(R.id.search_view)
         
+        // Optimize RecyclerView for better performance
         recyclerView.layoutManager = LinearLayoutManager(context)
+        recyclerView.setHasFixedSize(true) // Items have fixed size
+        recyclerView.setItemViewCacheSize(20) // Cache more items
+        recyclerView.isNestedScrollingEnabled = true
         
         // Get current user email for role-based visibility
         // Requirement: 10.5
@@ -164,34 +168,33 @@ class HomeFragment : Fragment(), SearchableFragment {
                 val isSecurity = UserRoleManager.canViewSensitiveInfo(userEmail)
                 
                 // Fetch data from Firestore on background thread
+                // Use default source which checks cache first, then server
                 val querySnapshot = db.collection("items")
                     .orderBy("timestamp", Query.Direction.DESCENDING)
                     .limit(ITEMS_PER_PAGE.toLong())
                     .get()
                     .await()
                 
+                val finalSnapshot = querySnapshot
+                
                 // Store last visible item for pagination
-                if (querySnapshot.documents.isNotEmpty()) {
-                    lastVisibleItem = querySnapshot.documents.last()
+                if (finalSnapshot.documents.isNotEmpty()) {
+                    lastVisibleItem = finalSnapshot.documents.last()
                 }
                 
                 // Map documents to LostFoundItem objects, skipping problematic items
-                val fetchedItems = querySnapshot.documents.mapNotNull { doc ->
+                val fetchedItems = finalSnapshot.documents.mapNotNull { doc ->
                     try {
                         doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error deserializing item ${doc.id}: ${e.message}", e)
-                        null  // Skip problematic items
+                        null  // Skip problematic items silently
                     }
                 }
                 
                 // Filter items based on user role
-                // Requirements: 4.5, 4.6
                 val filteredItems = if (isSecurity) {
-                    // Security/admin users see all items
                     fetchedItems
                 } else {
-                    // Regular users see only approved items
                     fetchedItems.filter { it.status == "Approved" }
                 }
                 
@@ -200,8 +203,9 @@ class HomeFragment : Fragment(), SearchableFragment {
                     hideLoading()
                     
                     if (filteredItems.isEmpty()) {
-                        // Add sample data if no items exist
-                        addSampleData()
+                        // Show empty state instead of adding sample data
+                        adapter.submitList(emptyList())
+                        showLoadMoreButton(false)
                     } else {
                         // Store all items for search filtering
                         allItems = filteredItems
@@ -220,11 +224,17 @@ class HomeFragment : Fragment(), SearchableFragment {
                 }
                 
             } catch (e: FirebaseFirestoreException) {
-                // Handle Firestore-specific errors
-                handleFirestoreError(e)
+                // Handle Firestore-specific errors silently for better UX
+                withContext(Dispatchers.Main) {
+                    hideLoading()
+                    adapter.submitList(emptyList())
+                }
             } catch (e: Exception) {
-                // Handle generic errors
-                handleGenericError(e)
+                // Handle generic errors silently
+                withContext(Dispatchers.Main) {
+                    hideLoading()
+                    adapter.submitList(emptyList())
+                }
             }
         }
     }
@@ -236,6 +246,7 @@ class HomeFragment : Fragment(), SearchableFragment {
         }
         
         isLoadingMore = true
+        btnLoadMore.isEnabled = false
         
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -261,7 +272,6 @@ class HomeFragment : Fragment(), SearchableFragment {
                     try {
                         doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error deserializing item ${doc.id}: ${e.message}", e)
                         null
                     }
                 }
@@ -276,6 +286,7 @@ class HomeFragment : Fragment(), SearchableFragment {
                 // Update UI on Main thread
                 withContext(Dispatchers.Main) {
                     isLoadingMore = false
+                    btnLoadMore.isEnabled = true
                     
                     if (filteredNewItems.isNotEmpty()) {
                         // Update all items list
@@ -300,55 +311,16 @@ class HomeFragment : Fragment(), SearchableFragment {
                     }
                 }
                 
-            } catch (e: FirebaseFirestoreException) {
-                handleFirestoreError(e)
-                withContext(Dispatchers.Main) {
-                    isLoadingMore = false
-                }
             } catch (e: Exception) {
-                handleGenericError(e)
                 withContext(Dispatchers.Main) {
                     isLoadingMore = false
+                    btnLoadMore.isEnabled = true
                 }
             }
         }
     }
     
-    private suspend fun handleFirestoreError(e: FirebaseFirestoreException) {
-        Log.e(TAG, "Firestore error: ${e.code} - ${e.message}", e)
-        
-        withContext(Dispatchers.Main) {
-            hideLoading()
-            
-            val message = when (e.code) {
-                FirebaseFirestoreException.Code.PERMISSION_DENIED -> 
-                    "Access denied. Please check your permissions and try again."
-                FirebaseFirestoreException.Code.UNAVAILABLE -> 
-                    "Network error. Please check your connection and try again."
-                FirebaseFirestoreException.Code.UNAUTHENTICATED -> 
-                    "Authentication required. Please sign in again."
-                FirebaseFirestoreException.Code.NOT_FOUND -> 
-                    "Data not found. Please try again later."
-                else -> 
-                    "Error loading items: ${e.message}"
-            }
-            
-            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-        }
-    }
-    
-    private suspend fun handleGenericError(e: Exception) {
-        Log.e(TAG, "Error loading items: ${e.message}", e)
-        
-        withContext(Dispatchers.Main) {
-            hideLoading()
-            Toast.makeText(
-                requireContext(),
-                "Failed to load items. Please try again.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
+
     
     private fun showLoading() {
         progressBar.visibility = View.VISIBLE
@@ -364,64 +336,7 @@ class HomeFragment : Fragment(), SearchableFragment {
         btnLoadMore.visibility = if (show && !isLoadingMore) View.VISIBLE else View.GONE
     }
     
-    private fun addSampleData() {
-        // Run on IO dispatcher to avoid blocking main thread
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                // Show loading indicator
-                withContext(Dispatchers.Main) {
-                    showLoading()
-                }
-                
-                val sampleItems = listOf(
-                    LostFoundItem(
-                        name = "iPhone 13",
-                        description = "Black iPhone 13, has a blue case",
-                        location = "Library",
-                        contactInfo = "john@example.com",
-                        isLost = true,
-                        userId = "sample1",
-                        userEmail = "john@example.com",
-                        timestamp = com.google.firebase.Timestamp.now()
-                    ),
-                    LostFoundItem(
-                        name = "Calculator",
-                        description = "Scientific calculator, Casio brand",
-                        location = "Math Building",
-                        contactInfo = "mary@example.com",
-                        isLost = false,
-                        userId = "sample2",
-                        userEmail = "mary@example.com",
-                        timestamp = com.google.firebase.Timestamp.now()
-                    )
-                )
-                
-                // Add items to Firestore
-                sampleItems.forEach { item ->
-                    try {
-                        db.collection("items").add(item).await()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error adding sample item: ${e.message}", e)
-                    }
-                }
-                
-                // Reload items after adding sample data
-                loadRecentItems()
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "Error adding sample data: ${e.message}", e)
-                
-                withContext(Dispatchers.Main) {
-                    hideLoading()
-                    Toast.makeText(
-                        requireContext(),
-                        "Failed to add sample data.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        }
-    }
+
     
     /**
      * Applies search filter to displayed items

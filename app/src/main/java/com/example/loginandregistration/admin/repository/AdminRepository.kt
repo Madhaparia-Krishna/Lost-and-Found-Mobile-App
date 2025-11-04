@@ -5,6 +5,7 @@ import com.example.loginandregistration.admin.models.*
 import com.example.loginandregistration.admin.utils.SecurityHelper
 import com.example.loginandregistration.admin.utils.DataValidator
 import com.example.loginandregistration.admin.utils.PerformanceHelper
+import com.example.loginandregistration.admin.utils.TestDataGenerator
 import com.example.loginandregistration.firebase.FirebaseManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import android.util.Log
@@ -76,21 +79,45 @@ class AdminRepository {
         return try {
             val currentUser = auth.currentUser
             if (currentUser?.email == ADMIN_EMAIL) {
-                val adminUser = AdminUser(
-                    uid = currentUser.uid,
-                    email = currentUser.email ?: "",
-                    displayName = currentUser.displayName ?: "Admin",
-                    photoUrl = currentUser.photoUrl?.toString() ?: "",
-                    role = UserRole.ADMIN,
-                    isBlocked = false,
-                    createdAt = com.google.firebase.Timestamp.now(),
-                    lastLoginAt = com.google.firebase.Timestamp.now()
-                )
-                
-                firestore.collection(USERS_COLLECTION)
+                // Check if user document exists
+                val existingDoc = firestore.collection(USERS_COLLECTION)
                     .document(currentUser.uid)
-                    .set(adminUser)
+                    .get()
                     .await()
+                
+                if (existingDoc.exists()) {
+                    // Update existing document to ensure role is ADMIN
+                    val updates = hashMapOf<String, Any>(
+                        "role" to "ADMIN",
+                        "lastLoginAt" to com.google.firebase.Timestamp.now()
+                    )
+                    
+                    firestore.collection(USERS_COLLECTION)
+                        .document(currentUser.uid)
+                        .update(updates)
+                        .await()
+                    
+                    Log.d(TAG, "Updated existing admin user with ADMIN role")
+                } else {
+                    // Create new admin user document
+                    val adminUser = AdminUser(
+                        uid = currentUser.uid,
+                        email = currentUser.email ?: "",
+                        displayName = currentUser.displayName ?: "Admin",
+                        photoUrl = currentUser.photoUrl?.toString() ?: "",
+                        role = UserRole.ADMIN,
+                        isBlocked = false,
+                        createdAt = com.google.firebase.Timestamp.now(),
+                        lastLoginAt = com.google.firebase.Timestamp.now()
+                    )
+                    
+                    firestore.collection(USERS_COLLECTION)
+                        .document(currentUser.uid)
+                        .set(adminUser)
+                        .await()
+                    
+                    Log.d(TAG, "Created new admin user document")
+                }
                     
                 // Log admin login activity
                 logActivity(
@@ -105,6 +132,7 @@ class AdminRepository {
             }
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Error initializing admin user", e)
             Result.failure(e)
         }
     }
@@ -121,26 +149,27 @@ class AdminRepository {
                 }
                 
                 if (itemsSnapshot != null) {
-                    try {
-                        val items = itemsSnapshot.toObjects(LostFoundItem::class.java)
-                        
-                        // For large datasets, compute stats asynchronously
-                        // Note: This is already in a background thread (Firestore listener thread)
-                        // but we make it explicit for clarity
-                        val stats = DashboardStats(
-                            totalItems = items.size,
-                            lostItems = items.count { it.isLost },
-                            foundItems = items.count { !it.isLost },
-                            receivedItems = 0, // This field doesn't exist in current model
-                            pendingItems = 0, // This field doesn't exist in current model
-                            totalUsers = 0, // We'll get this separately
-                            activeUsers = 0,
-                            blockedUsers = 0
-                        )
-                        trySend(stats)
-                    } catch (e: Exception) {
-                        // Send default stats if there's an error
-                        trySend(DashboardStats())
+                    // Process data on IO thread to avoid blocking main thread
+                    kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val items = itemsSnapshot.toObjects(LostFoundItem::class.java)
+                            
+                            // Compute stats on background thread
+                            val stats = DashboardStats(
+                                totalItems = items.size,
+                                lostItems = items.count { it.isLost },
+                                foundItems = items.count { !it.isLost },
+                                receivedItems = 0, // This field doesn't exist in current model
+                                pendingItems = 0, // This field doesn't exist in current model
+                                totalUsers = 0, // We'll get this separately
+                                activeUsers = 0,
+                                blockedUsers = 0
+                            )
+                            trySend(stats).isSuccess
+                        } catch (e: Exception) {
+                            // Send default stats if there's an error
+                            trySend(DashboardStats()).isSuccess
+                        }
                     }
                 } else {
                     trySend(DashboardStats())
@@ -162,11 +191,14 @@ class AdminRepository {
                 }
                 
                 if (snapshot != null) {
-                    try {
-                        val items = snapshot.toObjects(LostFoundItem::class.java)
-                        trySend(items)
-                    } catch (e: Exception) {
-                        trySend(emptyList())
+                    // Process data on IO thread to avoid blocking main thread
+                    kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val items = snapshot.toObjects(LostFoundItem::class.java)
+                            trySend(items).isSuccess
+                        } catch (e: Exception) {
+                            trySend(emptyList()).isSuccess
+                        }
                     }
                 } else {
                     trySend(emptyList())
@@ -199,27 +231,62 @@ class AdminRepository {
     
     // Get all users
     fun getAllUsers(): Flow<List<AdminUser>> = callbackFlow {
+        Log.d(TAG, "getAllUsers: Setting up Firestore listener for users collection")
         val listener = firestore.collection(USERS_COLLECTION)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    Log.e(TAG, "getAllUsers: Error listening to users collection", error)
                     // If there's an error or collection doesn't exist, send empty list
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
                 
                 if (snapshot != null) {
-                    try {
-                        val users = snapshot.toObjects(AdminUser::class.java)
-                        trySend(users)
-                    } catch (e: Exception) {
-                        trySend(emptyList())
+                    // Process data on IO thread to avoid blocking main thread
+                    kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            // Manual deserialization to handle role enum mismatches
+                            val users = snapshot.documents.mapNotNull { doc ->
+                                try {
+                                    val roleString = doc.getString("role") ?: "USER"
+                                    val role = UserRole.fromString(roleString)
+                                    
+                                    AdminUser(
+                                        uid = doc.getString("uid") ?: "",
+                                        email = doc.getString("email") ?: "",
+                                        displayName = doc.getString("displayName") ?: "",
+                                        photoUrl = doc.getString("photoUrl") ?: "",
+                                        role = role,
+                                        isBlocked = doc.getBoolean("isBlocked") ?: false,
+                                        createdAt = doc.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now(),
+                                        lastLoginAt = doc.getTimestamp("lastLoginAt"),
+                                        itemsReported = (doc.getLong("itemsReported") ?: 0).toInt(),
+                                        itemsFound = (doc.getLong("itemsFound") ?: 0).toInt(),
+                                        itemsClaimed = (doc.getLong("itemsClaimed") ?: 0).toInt()
+                                    )
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Failed to deserialize user ${doc.id}: ${e.message}")
+                                    null
+                                }
+                            }
+                            Log.d(TAG, "getAllUsers: Successfully loaded ${users.size} users from Firestore")
+                            Log.d(TAG, "getAllUsers: User emails: ${users.map { it.email }}")
+                            trySend(users).isSuccess
+                        } catch (e: Exception) {
+                            Log.e(TAG, "getAllUsers: Error parsing users from snapshot", e)
+                            trySend(emptyList()).isSuccess
+                        }
                     }
                 } else {
+                    Log.w(TAG, "getAllUsers: Snapshot is null")
                     trySend(emptyList())
                 }
             }
         
-        awaitClose { listener.remove() }
+        awaitClose { 
+            Log.d(TAG, "getAllUsers: Removing Firestore listener")
+            listener.remove() 
+        }
     }
     
     // Block/Unblock user
@@ -318,11 +385,14 @@ class AdminRepository {
                 }
                 
                 if (snapshot != null) {
-                    try {
-                        val activities = snapshot.toObjects(ActivityItem::class.java)
-                        trySend(activities)
-                    } catch (e: Exception) {
-                        trySend(emptyList())
+                    // Process data on IO thread to avoid blocking main thread
+                    kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val activities = snapshot.toObjects(ActivityItem::class.java)
+                            trySend(activities).isSuccess
+                        } catch (e: Exception) {
+                            trySend(emptyList()).isSuccess
+                        }
                     }
                 } else {
                     trySend(emptyList())
@@ -881,75 +951,78 @@ class AdminRepository {
                     }
                     
                     if (snapshot != null) {
-                        try {
-                            // Safe deserialization - skip documents that fail to parse
-                            val users = snapshot.documents.mapNotNull { doc ->
-                                try {
-                                    doc.toObject(EnhancedAdminUser::class.java)
-                                } catch (e: RuntimeException) {
-                                    Log.w(TAG, "Failed to deserialize user ${doc.id}: ${e.message}")
-                                    null
+                        // Process analytics on IO thread to avoid blocking main thread
+                        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                // Safe deserialization - skip documents that fail to parse
+                                val users = snapshot.documents.mapNotNull { doc ->
+                                    try {
+                                        doc.toObject(EnhancedAdminUser::class.java)
+                                    } catch (e: RuntimeException) {
+                                        Log.w(TAG, "Failed to deserialize user ${doc.id}: ${e.message}")
+                                        null
+                                    }
                                 }
-                            }
-                            
-                            // Calculate analytics
-                            val totalUsers = users.size
-                            val activeUsers = users.count { !it.isBlocked }
-                            val blockedUsers = users.count { it.isBlocked }
-                            
-                            // Count users by role
-                            val usersByRole = mutableMapOf<UserRole, Int>()
-                            UserRole.values().forEach { role ->
-                                usersByRole[role] = users.count { it.role == role }
-                            }
-                            
-                            // Calculate new users this month
-                            val calendar = Calendar.getInstance()
-                            calendar.set(Calendar.DAY_OF_MONTH, 1)
-                            calendar.set(Calendar.HOUR_OF_DAY, 0)
-                            calendar.set(Calendar.MINUTE, 0)
-                            calendar.set(Calendar.SECOND, 0)
-                            calendar.set(Calendar.MILLISECOND, 0)
-                            val monthStart = calendar.timeInMillis
-                            
-                            val newUsersThisMonth = users.count { it.createdAt.seconds * 1000 >= monthStart }
-                            
-                            // Calculate average items per user
-                            val totalItems = users.sumOf { 
-                                it.itemsReported + it.itemsFound + it.itemsClaimed 
-                            }
-                            val averageItemsPerUser = if (totalUsers > 0) {
-                                totalItems.toFloat() / totalUsers
-                            } else {
-                                0f
-                            }
-                            
-                            // Get top contributors (users with most items)
-                            val topContributors = users
-                                .sortedByDescending { 
+                                
+                                // Calculate analytics
+                                val totalUsers = users.size
+                                val activeUsers = users.count { !it.isBlocked }
+                                val blockedUsers = users.count { it.isBlocked }
+                                
+                                // Count users by role
+                                val usersByRole = mutableMapOf<UserRole, Int>()
+                                UserRole.values().forEach { role ->
+                                    usersByRole[role] = users.count { it.role == role }
+                                }
+                                
+                                // Calculate new users this month
+                                val calendar = Calendar.getInstance()
+                                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                                calendar.set(Calendar.MINUTE, 0)
+                                calendar.set(Calendar.SECOND, 0)
+                                calendar.set(Calendar.MILLISECOND, 0)
+                                val monthStart = calendar.timeInMillis
+                                
+                                val newUsersThisMonth = users.count { it.createdAt.seconds * 1000 >= monthStart }
+                                
+                                // Calculate average items per user
+                                val totalItems = users.sumOf { 
                                     it.itemsReported + it.itemsFound + it.itemsClaimed 
                                 }
-                                .take(5)
-                            
-                            val analytics = UserAnalytics(
-                                totalUsers = totalUsers,
-                                activeUsers = activeUsers,
-                                blockedUsers = blockedUsers,
-                                usersByRole = usersByRole,
-                                newUsersThisMonth = newUsersThisMonth,
-                                averageItemsPerUser = averageItemsPerUser,
-                                topContributors = topContributors
-                            )
-                            
-                            // Update cache
-                            cachedAnalytics = analytics
-                            analyticsCacheTimestamp = System.currentTimeMillis()
-                            
-                            Log.d(TAG, "User analytics calculated: $totalUsers total, $activeUsers active")
-                            trySend(analytics)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error calculating analytics", e)
-                            trySend(UserAnalytics())
+                                val averageItemsPerUser = if (totalUsers > 0) {
+                                    totalItems.toFloat() / totalUsers
+                                } else {
+                                    0f
+                                }
+                                
+                                // Get top contributors (users with most items)
+                                val topContributors = users
+                                    .sortedByDescending { 
+                                        it.itemsReported + it.itemsFound + it.itemsClaimed 
+                                    }
+                                    .take(5)
+                                
+                                val analytics = UserAnalytics(
+                                    totalUsers = totalUsers,
+                                    activeUsers = activeUsers,
+                                    blockedUsers = blockedUsers,
+                                    usersByRole = usersByRole,
+                                    newUsersThisMonth = newUsersThisMonth,
+                                    averageItemsPerUser = averageItemsPerUser,
+                                    topContributors = topContributors
+                                )
+                                
+                                // Update cache
+                                cachedAnalytics = analytics
+                                analyticsCacheTimestamp = System.currentTimeMillis()
+                                
+                                Log.d(TAG, "User analytics calculated: $totalUsers total, $activeUsers active")
+                                trySend(analytics).isSuccess
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error calculating analytics", e)
+                                trySend(UserAnalytics()).isSuccess
+                            }
                         }
                     } else {
                         trySend(UserAnalytics())
@@ -1129,8 +1202,34 @@ class AdminRepository {
     }
     
     /**
+     * Validate status transitions
+     * Requirements: 3.4
+     */
+    private fun isValidStatusTransition(current: ItemStatus, new: ItemStatus): Boolean {
+        return when (current) {
+            ItemStatus.ACTIVE -> new in listOf(
+                ItemStatus.REQUESTED,
+                ItemStatus.DONATION_PENDING
+            )
+            ItemStatus.REQUESTED -> new in listOf(
+                ItemStatus.RETURNED,
+                ItemStatus.ACTIVE
+            )
+            ItemStatus.DONATION_PENDING -> new in listOf(
+                ItemStatus.DONATION_READY,
+                ItemStatus.ACTIVE
+            )
+            ItemStatus.DONATION_READY -> new in listOf(
+                ItemStatus.DONATED,
+                ItemStatus.ACTIVE
+            )
+            ItemStatus.RETURNED, ItemStatus.DONATED -> false // Final states
+        }
+    }
+    
+    /**
      * Update item status with history logging
-     * Requirements: 2.3, 2.5
+     * Requirements: 2.3, 2.5, 3.4
      */
     suspend fun updateItemStatus(
         itemId: String, 
@@ -1156,8 +1255,15 @@ class AdminRepository {
             
             // Validate status change
             if (!isValidStatusTransition(previousStatus, newStatus)) {
+                val validTransitions = when (previousStatus) {
+                    ItemStatus.ACTIVE -> "REQUESTED or DONATION_PENDING"
+                    ItemStatus.REQUESTED -> "RETURNED or ACTIVE"
+                    ItemStatus.DONATION_PENDING -> "DONATION_READY or ACTIVE"
+                    ItemStatus.DONATION_READY -> "DONATED or ACTIVE"
+                    ItemStatus.RETURNED, ItemStatus.DONATED -> "none (final state)"
+                }
                 return Result.failure(IllegalArgumentException(
-                    "Invalid status transition from $previousStatus to $newStatus"
+                    "Invalid status transition from $previousStatus to $newStatus. Valid transitions: $validTransitions"
                 ))
             }
             
@@ -1461,33 +1567,7 @@ class AdminRepository {
         }
     }
     
-    /**
-     * Validates if a status transition is allowed
-     * Requirements: 2.3
-     */
-    private fun isValidStatusTransition(from: ItemStatus, to: ItemStatus): Boolean {
-        return when (from) {
-            ItemStatus.ACTIVE -> to in listOf(
-                ItemStatus.REQUESTED, 
-                ItemStatus.RETURNED, 
-                ItemStatus.DONATION_PENDING
-            )
-            ItemStatus.REQUESTED -> to in listOf(
-                ItemStatus.RETURNED, 
-                ItemStatus.ACTIVE
-            )
-            ItemStatus.RETURNED -> false // Final state
-            ItemStatus.DONATION_PENDING -> to in listOf(
-                ItemStatus.DONATION_READY, 
-                ItemStatus.ACTIVE
-            )
-            ItemStatus.DONATION_READY -> to in listOf(
-                ItemStatus.DONATED, 
-                ItemStatus.DONATION_PENDING
-            )
-            ItemStatus.DONATED -> false // Final state
-        }
-    }
+
     
     // ========== Donation Management Methods ==========
     // Requirements: 3.2, 3.3, 3.4, 3.5, 3.6
@@ -3951,7 +4031,7 @@ class AdminRepository {
     fun observeBackgroundExportStatus(
         context: android.content.Context,
         workId: UUID
-    ): androidx.lifecycle.LiveData<androidx.work.WorkInfo> {
+    ): androidx.lifecycle.LiveData<androidx.work.WorkInfo?> {
         val exportQueue = com.example.loginandregistration.admin.utils.ExportQueueManager.getInstance(context)
         return exportQueue.observeExportStatus(workId)
     }
@@ -4002,4 +4082,213 @@ class AdminRepository {
     // Note: Item Management Methods (getItemDetails, updateItemDetails, deleteItem) 
     // are already implemented earlier in this file (lines 965-1300)
     // Requirements: 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9
+    
+    // ========== User Schema Migration Methods ==========
+    // Requirements: 2.5
+    
+    /**
+     * Migrate individual user document from old schema to new unified schema
+     * Maps old fields (userId → uid, name → displayName) and adds missing fields
+     * Requirements: 2.5
+     */
+    suspend fun migrateUserSchema(userId: String): Result<Unit> {
+        return try {
+            if (userId.isBlank()) {
+                return Result.failure(IllegalArgumentException("User ID cannot be blank"))
+            }
+            
+            val userDoc = firestore.collection(USERS_COLLECTION)
+                .document(userId)
+                .get()
+                .await()
+            
+            if (!userDoc.exists()) {
+                return Result.failure(NoSuchElementException("User not found: $userId"))
+            }
+            
+            val updates = mutableMapOf<String, Any>()
+            
+            // Map old fields to new fields
+            userDoc.getString("userId")?.let { 
+                updates["uid"] = it 
+                Log.d(TAG, "Mapping userId -> uid: $it")
+            }
+            userDoc.getString("name")?.let { 
+                updates["displayName"] = it 
+                Log.d(TAG, "Mapping name -> displayName: $it")
+            }
+            
+            // Add missing fields with defaults
+            if (!userDoc.contains("role")) {
+                updates["role"] = "USER"
+                Log.d(TAG, "Adding default role: USER")
+            }
+            if (!userDoc.contains("isBlocked")) {
+                updates["isBlocked"] = false
+                Log.d(TAG, "Adding default isBlocked: false")
+            }
+            if (!userDoc.contains("photoUrl")) {
+                updates["photoUrl"] = ""
+                Log.d(TAG, "Adding default photoUrl: empty")
+            }
+            if (!userDoc.contains("itemsReported")) {
+                updates["itemsReported"] = 0
+                Log.d(TAG, "Adding default itemsReported: 0")
+            }
+            if (!userDoc.contains("itemsFound")) {
+                updates["itemsFound"] = 0
+                Log.d(TAG, "Adding default itemsFound: 0")
+            }
+            if (!userDoc.contains("itemsClaimed")) {
+                updates["itemsClaimed"] = 0
+                Log.d(TAG, "Adding default itemsClaimed: 0")
+            }
+            if (!userDoc.contains("lastLoginAt")) {
+                updates["lastLoginAt"] = com.google.firebase.firestore.FieldValue.delete()
+                Log.d(TAG, "Adding default lastLoginAt: null")
+            }
+            
+            if (updates.isNotEmpty()) {
+                firestore.collection(USERS_COLLECTION)
+                    .document(userId)
+                    .update(updates)
+                    .await()
+                Log.d(TAG, "Successfully migrated user $userId with ${updates.size} updates")
+            } else {
+                Log.d(TAG, "User $userId already has unified schema, no migration needed")
+            }
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error migrating user schema for $userId", e)
+            Result.failure(Exception("Failed to migrate user schema: ${e.message}"))
+        }
+    }
+    
+    /**
+     * Migrate all users from old schema to new unified schema
+     * Performs batch migration with error tracking
+     * Requirements: 2.5
+     */
+    suspend fun migrateAllUsers(): Result<Int> {
+        return try {
+            Log.d(TAG, "Starting batch user migration...")
+            
+            val users = firestore.collection(USERS_COLLECTION)
+                .get()
+                .await()
+            
+            var migratedCount = 0
+            var errorCount = 0
+            val errors = mutableListOf<String>()
+            
+            users.documents.forEach { doc ->
+                val userId = doc.id
+                migrateUserSchema(userId)
+                    .onSuccess { 
+                        migratedCount++
+                        Log.d(TAG, "Migrated user $userId ($migratedCount/${users.size()})")
+                    }
+                    .onFailure { e ->
+                        errorCount++
+                        val errorMsg = "Failed to migrate user $userId: ${e.message}"
+                        errors.add(errorMsg)
+                        Log.e(TAG, errorMsg, e)
+                    }
+            }
+            
+            Log.d(TAG, "Batch migration complete: $migratedCount migrated, $errorCount errors")
+            
+            if (errors.isNotEmpty()) {
+                Log.w(TAG, "Migration errors: ${errors.joinToString("; ")}")
+            }
+            
+            Result.success(migratedCount)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during batch user migration", e)
+            Result.failure(Exception("Failed to migrate all users: ${e.message}"))
+        }
+    }
+    
+    // ========== Test Data Generation Methods ==========
+    // Requirements: 3.1, 3.2, 3.3
+    
+    /**
+     * Generate test items with timestamps from 1+ year ago
+     * Creates items at different ages (365 days, 400 days, 2 years, etc.) and various statuses
+     * for comprehensive testing of the donation workflow
+     * Requirements: 3.1, 3.2, 3.3
+     */
+    suspend fun generateOldTestItems(): Result<Int> {
+        return try {
+            requireAdminAccess()
+            
+            Log.d(TAG, "Generating old test items for donation testing...")
+            val result = TestDataGenerator.generateOldTestItems(firestore)
+            
+            result.onSuccess { count ->
+                Log.d(TAG, "Successfully generated $count old test items")
+                
+                // Log activity
+                logActivity(
+                    ActivityItem(
+                        userId = auth.currentUser?.uid ?: "",
+                        userName = "Admin",
+                        userEmail = auth.currentUser?.email ?: "",
+                        action = ActivityType.ITEM_REPORTED,
+                        description = "Generated $count old test items for donation testing"
+                    )
+                )
+            }.onFailure { e ->
+                Log.e(TAG, "Failed to generate old test items", e)
+            }
+            
+            result
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Security error generating test items", e)
+            Result.failure(e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error generating test items", e)
+            Result.failure(Exception("Failed to generate test items: ${e.message}"))
+        }
+    }
+    
+    /**
+     * Delete all test items created by the test data generator
+     * Useful for cleanup after testing
+     * Requirements: 3.1, 3.2, 3.3
+     */
+    suspend fun deleteTestItems(): Result<Int> {
+        return try {
+            requireAdminAccess()
+            
+            Log.d(TAG, "Deleting test items...")
+            val result = TestDataGenerator.deleteTestItems(firestore)
+            
+            result.onSuccess { count ->
+                Log.d(TAG, "Successfully deleted $count test items")
+                
+                // Log activity
+                logActivity(
+                    ActivityItem(
+                        userId = auth.currentUser?.uid ?: "",
+                        userName = "Admin",
+                        userEmail = auth.currentUser?.email ?: "",
+                        action = ActivityType.STATUS_CHANGED,
+                        description = "Deleted $count test items"
+                    )
+                )
+            }.onFailure { e ->
+                Log.e(TAG, "Failed to delete test items", e)
+            }
+            
+            result
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Security error deleting test items", e)
+            Result.failure(e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting test items", e)
+            Result.failure(Exception("Failed to delete test items: ${e.message}"))
+        }
+    }
 }

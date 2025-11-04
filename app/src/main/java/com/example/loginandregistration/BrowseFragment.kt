@@ -52,6 +52,10 @@ class BrowseFragment : Fragment() {
         pagerAdapter = BrowseViewPagerAdapter(this)
         viewPager.adapter = pagerAdapter
         
+        // Optimize ViewPager2 for better performance
+        viewPager.offscreenPageLimit = 1 // Preload adjacent pages only
+        viewPager.isUserInputEnabled = true // Enable swipe gestures
+        
         // Connect TabLayout with ViewPager2
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = pagerAdapter.getTabTitle(position)

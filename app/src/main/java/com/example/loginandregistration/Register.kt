@@ -98,14 +98,21 @@ class Register : AppCompatActivity() {
     private fun createUserDocument(userId: String, name: String, phone: String, email: String) {
         val db = FirebaseFirestore.getInstance()
         val user = User(
-            userId = userId,
-            name = name,
+            uid = userId,                    // Map to uid
+            displayName = name,              // Map to displayName
             email = email,
             phone = phone,
+            photoUrl = "",                   // Empty initially
+            role = "USER",                   // Default role
+            isBlocked = false,               // Not blocked by default
             gender = "",
             fcmToken = "",
             createdAt = Timestamp.now(),
-            updatedAt = Timestamp.now()
+            updatedAt = Timestamp.now(),
+            lastLoginAt = Timestamp.now(),   // Set on registration
+            itemsReported = 0,
+            itemsFound = 0,
+            itemsClaimed = 0
         )
         
         lifecycleScope.launch(Dispatchers.IO) {

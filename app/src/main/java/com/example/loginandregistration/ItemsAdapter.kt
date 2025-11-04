@@ -91,7 +91,7 @@ class ItemsAdapter(
                 tvItemStatus.setBackgroundColor(context.getColor(R.color.found_tag))
             }
 
-            // Load image using Glide with placeholder and error handling
+            // Load image using Glide with optimized settings
             // Handle nullable imageUrl properly
             if (!item.imageUrl.isNullOrEmpty()) {
                 Glide.with(context)
@@ -99,6 +99,8 @@ class ItemsAdapter(
                     .placeholder(R.drawable.ic_image_placeholder)
                     .error(R.drawable.ic_item_default)
                     .centerCrop()
+                    .thumbnail(0.1f) // Load low-res thumbnail first
+                    .override(200, 200) // Resize to fixed size for better performance
                     .into(ivItemIcon)
             } else {
                 // Set default icon based on item type if no image URL

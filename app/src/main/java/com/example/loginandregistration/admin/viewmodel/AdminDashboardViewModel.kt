@@ -137,12 +137,20 @@ class AdminDashboardViewModel : ViewModel() {
         }
     }
     
-    private fun loadAllUsers() {
+    fun loadAllUsers() {
         viewModelScope.launch {
+            android.util.Log.d("AdminDashboardViewModel", "loadAllUsers: Starting to load users")
+            _isLoading.value = true
             repository.getAllUsers()
-                .catch { e -> _error.value = e.message }
+                .catch { e -> 
+                    android.util.Log.e("AdminDashboardViewModel", "loadAllUsers: Error loading users", e)
+                    _error.value = "Failed to load users: ${e.message}"
+                    _isLoading.value = false
+                }
                 .collect { users ->
+                    android.util.Log.d("AdminDashboardViewModel", "loadAllUsers: Loaded ${users.size} users")
                     _allUsers.value = users
+                    _isLoading.value = false
                 }
         }
     }
@@ -497,6 +505,28 @@ class AdminDashboardViewModel : ViewModel() {
     }
     
     /**
+     * Update item status (simplified version for callback usage)
+     * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+     */
+    fun updateItemStatus(itemId: String, newStatus: ItemStatus, reason: String = "") {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.updateItemStatus(itemId, newStatus, reason)
+                .onSuccess {
+                    _successMessage.value = "Item status updated successfully"
+                    // Refresh item details if currently viewing
+                    loadItemDetails(itemId)
+                    // Refresh all items list
+                    loadAllItemsWithStatus()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to update item status: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
      * Delete an item
      * Requirements: 2.6
      */
@@ -553,82 +583,7 @@ class AdminDashboardViewModel : ViewModel() {
     
     // ========== Donation Management Methods (Task 8.3) ==========
     // Requirements: 3.1-3.9
-    
-    /**
-     * Load donation queue with real-time updates
-     * Requirements: 3.2
-     */
-    fun loadDonationQueue() {
-        viewModelScope.launch {
-            repository.getDonationQueue()
-                .catch { e -> 
-                    _error.value = "Failed to load donation queue: ${e.message}"
-                }
-                .collect { donations ->
-                    _donationQueue.value = donations
-                }
-        }
-    }
-    
-    /**
-     * Mark item as ready for donation
-     * Requirements: 3.4
-     */
-    fun markItemReadyForDonation(itemId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            repository.markItemReadyForDonation(itemId)
-                .onSuccess {
-                    _successMessage.value = "Item marked as ready for donation"
-                    // Refresh donation queue
-                    loadDonationQueue()
-                    // Refresh donation stats
-                    loadDonationStats(DateRange(0, System.currentTimeMillis()))
-                }
-                .onFailure { e ->
-                    _error.value = "Failed to mark item ready for donation: ${e.message}"
-                }
-            _isLoading.value = false
-        }
-    }
-    
-    /**
-     * Mark item as donated with recipient and value
-     * Requirements: 3.5
-     */
-    fun markItemAsDonated(itemId: String, recipient: String, value: Double) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            repository.markItemAsDonated(itemId, recipient, value)
-                .onSuccess {
-                    _successMessage.value = "Item marked as donated successfully"
-                    // Refresh donation queue
-                    loadDonationQueue()
-                    // Refresh donation stats
-                    loadDonationStats(DateRange(0, System.currentTimeMillis()))
-                }
-                .onFailure { e ->
-                    _error.value = "Failed to mark item as donated: ${e.message}"
-                }
-            _isLoading.value = false
-        }
-    }
-    
-    /**
-     * Load donation statistics
-     * Requirements: 3.6, 3.7
-     */
-    fun loadDonationStats(dateRange: DateRange) {
-        viewModelScope.launch {
-            repository.getDonationStats(dateRange)
-                .catch { e -> 
-                    _error.value = "Failed to load donation stats: ${e.message}"
-                }
-                .collect { stats ->
-                    _donationStats.value = stats
-                }
-        }
-    }
+    // Note: Methods moved to avoid duplication - see below after Notification Management section
     
     // ========== Activity Log Methods (Task 8.4) ==========
     // Requirements: 5.1-5.11
@@ -760,6 +715,114 @@ class AdminDashboardViewModel : ViewModel() {
                 }
                 .onFailure { e ->
                     _error.value = "Failed to schedule notification: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    // ========== Donation Management Methods (Task 8.3) ==========
+    // Requirements: 3.1-3.9, 5.1, 5.2, 5.3
+    
+    /**
+     * Load donation queue with real-time updates
+     * Requirements: 3.2, 5.1, 5.2, 5.3
+     */
+    fun loadDonationQueue() {
+        viewModelScope.launch {
+            android.util.Log.d("AdminDashboardViewModel", "loadDonationQueue: Starting to load donations")
+            _isLoading.value = true
+            repository.getDonationQueue()
+                .catch { e -> 
+                    android.util.Log.e("AdminDashboardViewModel", "loadDonationQueue: Error loading donations", e)
+                    _error.value = "Failed to load donation queue: ${e.message}"
+                    _isLoading.value = false
+                }
+                .collect { donations ->
+                    android.util.Log.d("AdminDashboardViewModel", "loadDonationQueue: Loaded ${donations.size} donations")
+                    _donationQueue.value = donations
+                    _isLoading.value = false
+                }
+        }
+    }
+    
+    /**
+     * Mark item as ready for donation
+     * Requirements: 3.4
+     */
+    fun markItemReadyForDonation(itemId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.markItemReadyForDonation(itemId)
+                .onSuccess {
+                    _successMessage.value = "Item marked as ready for donation"
+                    // Refresh donation queue
+                    loadDonationQueue()
+                    // Refresh donation stats
+                    loadDonationStats(DateRange(0, System.currentTimeMillis()))
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to mark item ready for donation: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Mark item as donated with recipient and value
+     * Requirements: 3.5
+     */
+    fun markItemAsDonated(itemId: String, recipient: String, value: Double) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.markItemAsDonated(itemId, recipient, value)
+                .onSuccess {
+                    _successMessage.value = "Item marked as donated successfully"
+                    // Refresh donation queue
+                    loadDonationQueue()
+                    // Refresh donation stats
+                    loadDonationStats(DateRange(0, System.currentTimeMillis()))
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to mark item as donated: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Load donation statistics
+     * Requirements: 3.6, 3.7
+     */
+    fun loadDonationStats(dateRange: DateRange) {
+        viewModelScope.launch {
+            repository.getDonationStats(dateRange)
+                .catch { e -> 
+                    _error.value = "Failed to load donation stats: ${e.message}"
+                }
+                .collect { stats ->
+                    _donationStats.value = stats
+                }
+        }
+    }
+    
+    /**
+     * Automatically flag old items (1+ year old) for donation
+     * Requirements: 3.1, 3.2
+     */
+    fun flagOldItemsForDonation() {
+        viewModelScope.launch {
+            android.util.Log.d("AdminDashboardViewModel", "flagOldItemsForDonation: Starting automatic flagging")
+            _isLoading.value = true
+            repository.checkAndFlagOldItems()
+                .onSuccess { flaggedCount ->
+                    android.util.Log.d("AdminDashboardViewModel", "flagOldItemsForDonation: Flagged $flaggedCount items")
+                    _successMessage.value = "Automatically flagged $flaggedCount items for donation"
+                    // Refresh donation queue to show newly flagged items
+                    loadDonationQueue()
+                }
+                .onFailure { e ->
+                    android.util.Log.e("AdminDashboardViewModel", "flagOldItemsForDonation: Error", e)
+                    _error.value = "Failed to flag old items: ${e.message}"
                 }
             _isLoading.value = false
         }
@@ -898,5 +961,51 @@ class AdminDashboardViewModel : ViewModel() {
     fun clearExportResult() {
         _exportResult.value = ""
         _exportProgress.value = 0
+    }
+    
+    // ========== Test Data Generation Methods ==========
+    // Requirements: 3.1, 3.2, 3.3
+    
+    /**
+     * Generate old test items for donation workflow testing
+     * Creates items at different ages (365 days, 400 days, 2 years, etc.)
+     * with various statuses for comprehensive testing
+     * Requirements: 3.1, 3.2, 3.3
+     */
+    fun generateOldTestItems() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.generateOldTestItems()
+                .onSuccess { count ->
+                    _successMessage.value = "Successfully generated $count old test items for donation testing"
+                    // Refresh data to show new items
+                    loadDashboardData()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to generate old test items: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Delete all test items created by the test data generator
+     * Useful for cleanup after testing
+     * Requirements: 3.1, 3.2, 3.3
+     */
+    fun deleteTestItems() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.deleteTestItems()
+                .onSuccess { count ->
+                    _successMessage.value = "Successfully deleted $count test items"
+                    // Refresh data to reflect deletion
+                    loadDashboardData()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to delete test items: ${e.message}"
+                }
+            _isLoading.value = false
+        }
     }
 }

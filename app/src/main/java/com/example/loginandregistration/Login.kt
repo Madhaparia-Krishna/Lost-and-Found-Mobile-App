@@ -79,9 +79,9 @@ class Login : AppCompatActivity() {
         // Set condition to keep splash screen visible
         splashScreen.setKeepOnScreenCondition { keepSplashScreen }
         
-        // Launch coroutine to dismiss splash screen after delay
+        // Launch coroutine to dismiss splash screen after shorter delay
         lifecycleScope.launch {
-            kotlinx.coroutines.delay(1500)
+            kotlinx.coroutines.delay(800) // Reduced from 1500ms to 800ms
             keepSplashScreen = false
         }
         
@@ -267,15 +267,15 @@ class Login : AppCompatActivity() {
                         }
                         
                         // User is not blocked, proceed with role-based navigation
-                        val role = document.getString("role") ?: "user"
-                        when (role) {
-                            "admin" -> {
+                        val role = document.getString("role") ?: "USER"
+                        when (role.uppercase()) {
+                            "ADMIN" -> {
                                 val intent = Intent(this@Login, com.example.loginandregistration.admin.AdminDashboardActivity::class.java)
                                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 startActivity(intent)
                                 finish()
                             }
-                            "security" -> {
+                            "SECURITY" -> {
                                 val intent = Intent(this@Login, SecurityMainActivity::class.java)
                                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 startActivity(intent)
@@ -305,8 +305,8 @@ class Login : AppCompatActivity() {
         
         // Create User object with available data
         val user = User(
-            userId = userId,
-            name = "", // Empty for existing users, they can update in profile
+            uid = userId,
+            displayName = "", // Empty for existing users, they can update in profile
             email = email ?: "",
             phone = "", // Empty for existing users, they can update in profile
             gender = "",

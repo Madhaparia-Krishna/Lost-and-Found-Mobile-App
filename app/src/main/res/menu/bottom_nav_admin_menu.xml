@@ -21,10 +21,13 @@
         android:icon="@drawable/ic_donation"
         android:title="Donations" />
 
+    <!-- Notifications feature removed from admin dashboard -->
+    <!--
     <item
         android:id="@+id/navigation_notifications"
         android:icon="@drawable/ic_notifications"
         android:title="Notifications" />
+    -->
 
     <item
         android:id="@+id/navigation_profile"

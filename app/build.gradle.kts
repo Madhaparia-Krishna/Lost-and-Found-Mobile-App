@@ -20,11 +20,17 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isMinifyEnabled = false
+            // Disable debugging features for better performance testing
+            isDebuggable = true
         }
     }
     compileOptions {
@@ -35,55 +41,68 @@ android {
         jvmTarget = "11"
     }
 
-    // --- FIX START ---
-    // Add this block to enable View Binding and BuildConfig
+    // Enable View Binding and BuildConfig
     buildFeatures {
         viewBinding = true
         buildConfig = true
     }
-    // --- FIX END ---
+    
+    // Performance optimizations
+    packagingOptions {
+        resources {
+            excludes += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt",
+                "META-INF/*.kotlin_module"
+            )
+        }
+    }
 }
 
 dependencies {
-    implementation(platform(libs.firebase.bom)) // Added Firebase BOM platform
+    implementation(platform(libs.firebase.bom)) // Firebase BOM manages all Firebase library versions
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.firebase.auth.ktx) // Changed to firebase.auth.ktx
-    implementation("com.google.firebase:firebase-firestore-ktx") // For Firestore
-    implementation("com.google.firebase:firebase-storage-ktx") // For image storage
-    implementation("com.google.firebase:firebase-messaging-ktx") // For FCM push notifications
-    implementation("com.github.bumptech.glide:glide:4.16.0") // For image loading
-    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0") // Glide annotation processor
+    implementation(libs.firebase.auth.ktx) // Version managed by Firebase BOM
+    implementation(libs.firebase.firestore.ktx) // Version managed by Firebase BOM
+    implementation(libs.firebase.storage.ktx) // Version managed by Firebase BOM
+    implementation(libs.firebase.messaging.ktx) // Version managed by Firebase BOM
+    implementation(libs.glide) // For image loading
+    annotationProcessor(libs.glide.compiler) // Glide annotation processor
     
     // Splash Screen API for Android 12+
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation(libs.androidx.core.splashscreen)
     
     // Admin Dashboard Dependencies
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
-    implementation("androidx.cardview:cardview:1.0.0")
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0") // For charts
-    implementation("androidx.navigation:navigation-fragment-ktx:2.7.6")
-    implementation("androidx.navigation:navigation-ui-ktx:2.7.6")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0") // For lifecycleScope
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.work:work-runtime-ktx:2.9.0") // For background jobs
+    implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.cardview)
+    implementation(libs.androidx.swiperefreshlayout)
+    implementation(libs.mp.android.chart) // For charts
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx) // For lifecycleScope
+    implementation(libs.androidx.work.runtime.ktx) // For background jobs
     
     // Kotlin Coroutines Dependencies
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3") // For Firebase await()
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services) // For Firebase await()
     
     // PDF Generation Dependencies
-    implementation("com.itextpdf:itext7-core:7.2.5") // For PDF generation
+    implementation(libs.itext7.core) // For PDF generation
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation("com.google.android.gms:play-services-auth:21.2.0") // For Google Sign-In
+    implementation(libs.play.services.auth) // For Google Sign-In
 }

@@ -19,6 +19,25 @@ class StoragePermissionHelper(private val context: Context) {
         
         /**
          * Gets the required storage permissions based on Android version
+         * For image/video selection on Android 13+
+         * Requirements: 4.2, 4.3, 4.4, 4.5
+         */
+        fun getStoragePermissions(): Array<String> {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // Android 13+ (API 33): Use granular media permissions
+                arrayOf(
+                    Manifest.permission.READ_MEDIA_IMAGES,
+                    Manifest.permission.READ_MEDIA_VIDEO
+                )
+            } else {
+                // Android 12 and below: Use legacy storage permission
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
+        
+        /**
+         * Gets the required storage permissions based on Android version
+         * For export functionality (legacy method for backward compatibility)
          */
         fun getRequiredPermissions(): Array<String> {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

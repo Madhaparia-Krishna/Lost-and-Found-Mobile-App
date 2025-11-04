@@ -23,12 +23,15 @@ data class ActivityItem(
     val itemName: String = "",
     val description: String = "",
     val timestamp: Long = System.currentTimeMillis(),
-    
-    // Map Firestore "new found" field to isNew property
-    @get:PropertyName("new found")
-    @set:PropertyName("new found")
-    var isNew: Boolean = true
-)
+    val isNew: Boolean = true
+) {
+    // Ignore the "new" field from Firestore to prevent deserialization errors
+    // This field is not used in the current implementation
+    @get:PropertyName("new")
+    @set:PropertyName("new")
+    @Suppress("unused")
+    var newField: Boolean = true
+}
 
 enum class ActivityType {
     ITEM_REPORTED,
