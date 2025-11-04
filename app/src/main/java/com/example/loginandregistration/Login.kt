@@ -18,6 +18,7 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -30,7 +31,6 @@ import kotlinx.coroutines.withContext
 class Login : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
-    // --- CHANGE START: Use the new One Tap client ---
     private lateinit var oneTapClient: SignInClient
     private lateinit var signInRequest: BeginSignInRequest
     // --- CHANGE END ---
@@ -41,17 +41,14 @@ class Login : AppCompatActivity() {
         private const val TAG = "LoginActivity"
     }
 
-    // --- CHANGE START: Update the activity result launcher ---
     private val oneTapLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             try {
-                // Get the credential from the result
                 val credential = oneTapClient.getSignInCredentialFromIntent(result.data)
                 val idToken = credential.googleIdToken
                 if (idToken != null) {
-                    // Pass the ID token to Firebase
                     firebaseAuthWithGoogle(idToken)
                 } else {
                     Log.w(TAG, "Google sign in failed: ID token is null")
@@ -65,7 +62,6 @@ class Login : AppCompatActivity() {
             Log.w(TAG, "Google sign in cancelled or failed: resultCode=${result.resultCode}")
         }
     }
-    // --- CHANGE END ---
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before calling super.onCreate()
@@ -88,24 +84,19 @@ class Login : AppCompatActivity() {
         setContentView(R.layout.activity_login)
 
         auth = Firebase.auth
+        db = FirebaseFirestore.getInstance()
 
-        // --- CHANGE START: Configure the new One Tap Sign-In ---
         oneTapClient = Identity.getSignInClient(this)
         signInRequest = BeginSignInRequest.builder()
             .setGoogleIdTokenRequestOptions(
                 BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
                     .setSupported(true)
-                    // Your server's client ID, not your Android client ID
                     .setServerClientId(getString(R.string.default_web_client_id))
-                    // Show all accounts on the device
                     .setFilterByAuthorizedAccounts(false)
                     .build()
             )
             .build()
-        // --- CHANGE END ---
 
-
-        // Find Views
         val etEmail = findViewById<EditText>(R.id.etEmail)
         val etPassword = findViewById<EditText>(R.id.etPassword)
         val btnLogin = findViewById<Button>(R.id.btnLogin)
@@ -113,7 +104,6 @@ class Login : AppCompatActivity() {
         val btnGoogleLogin = findViewById<Button>(R.id.btnGoogleLogin)
         val tvForgotPassword = findViewById<TextView>(R.id.tvForgotPassword)
 
-        // Set Click Listeners
         btnLogin.setOnClickListener {
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
@@ -123,11 +113,11 @@ class Login : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Sign in with Email and Password
             auth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this) { task ->
                     if (task.isSuccessful) {
                         Log.d(TAG, "signInWithEmail:success")
+                        // After successful login, check role from Firestore for redirection
                         checkUserRoleAndRedirect()
                     } else {
                         Log.w(TAG, "signInWithEmail:failure", task.exception)
@@ -191,7 +181,6 @@ class Login : AppCompatActivity() {
     }
 
     private fun signInWithGoogle() {
-        // --- CHANGE START: Use the new One Tap client to begin sign-in ---
         oneTapClient.beginSignIn(signInRequest)
             .addOnSuccessListener(this) { result ->
                 try {
@@ -203,31 +192,26 @@ class Login : AppCompatActivity() {
                 }
             }
             .addOnFailureListener(this) { e ->
-                // No Google Accounts found. Fallback to regular sign-in?
                 Log.d(TAG, "beginSignIn failed: ${e.localizedMessage}")
             }
-        // --- CHANGE END ---
     }
 
-
-    // --- CHANGE START: Update this function to accept the ID token string ---
     private fun firebaseAuthWithGoogle(idToken: String) {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
-        // --- CHANGE END ---
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
                     Log.d(TAG, "signInWithCredential:success")
-                    // Check if the user is new to create their document
                     val isNewUser = task.result?.additionalUserInfo?.isNewUser ?: false
                     if (isNewUser) {
                         Log.d(TAG, "New user detected, creating Firestore document.")
-                        createNewUserDocument(auth.currentUser!!.uid, auth.currentUser?.email)
+                        auth.currentUser?.let { createNewUserDocument(it) }
                     }
+                    // Always check role after signing in
                     checkUserRoleAndRedirect()
                 } else {
                     Log.w(TAG, "signInWithCredential:failure", task.exception)
-                    Toast.makeText(this, getString(R.string.google_login_failed, task.exception?.message ?: getString(R.string.unknown_error)), Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Google login failed: ${task.exception?.message}", Toast.LENGTH_LONG).show()
                 }
             }
     }
@@ -330,6 +314,7 @@ class Login : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Check if a user is already signed in and redirect them
         val currentUser = auth.currentUser
         if (currentUser != null) {
             Log.d(TAG, "User already logged in. Checking role...")
@@ -337,4 +322,3 @@ class Login : AppCompatActivity() {
         }
     }
 }
-

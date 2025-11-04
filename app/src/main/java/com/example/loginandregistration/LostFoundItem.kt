@@ -4,8 +4,6 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.PropertyName
 import com.google.firebase.firestore.IgnoreExtraProperties
 import java.io.Serializable
-import java.util.*
-import com.google.firebase.firestore.DocumentId
 
 @IgnoreExtraProperties
 data class LostFoundItem(
@@ -21,7 +19,7 @@ data class LostFoundItem(
     @get:PropertyName("lost found")
     @set:PropertyName("lost found")
     var isLost: Boolean = true, // true for lost, false for found
-    
+
     var status: String = "Pending", // Add this field with a default value
     val approvedBy: String = "",
     val approvalDate: Timestamp? = null,
