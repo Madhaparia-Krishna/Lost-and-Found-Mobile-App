@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.card.MaterialCardView
 
 class ReportAdapter(
     private val reportList: List<LostFoundItem>,
@@ -15,6 +16,7 @@ class ReportAdapter(
 ) : RecyclerView.Adapter<ReportAdapter.ReportViewHolder>() {
 
     class ReportViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val cardItem: MaterialCardView = itemView.findViewById(R.id.card_item)
         val itemName: TextView = itemView.findViewById(R.id.tv_item_name)
         val itemDescription: TextView = itemView.findViewById(R.id.tv_item_description)
         val reportedBy: TextView = itemView.findViewById(R.id.tv_reported_by)
@@ -31,16 +33,32 @@ class ReportAdapter(
     override fun onBindViewHolder(holder: ReportViewHolder, position: Int) {
         val report = reportList[position]
 
-        holder.itemName.text = report.name
+        // Display item type (Lost/Found) with the name
+        val itemType = if (report.isLost) "Lost" else "Found"
+        holder.itemName.text = "$itemType: ${report.name}"
         holder.itemDescription.text = report.description
         holder.reportedBy.text = "By: ${report.userEmail}" // Shows user email
         holder.status.text = report.status
 
-        // Change status color for visibility
+        // Highlight pending items with orange stroke
+        // Requirements: 4.6
         when (report.status) {
-            "Approved" -> holder.status.setTextColor(Color.parseColor("#4CAF50")) // Green
-            "Rejected" -> holder.status.setTextColor(Color.parseColor("#F44336")) // Red
-            else -> holder.status.setTextColor(Color.parseColor("#FF9800")) // Orange
+            "Approved" -> {
+                holder.status.setTextColor(Color.parseColor("#4CAF50")) // Green
+                holder.cardItem.strokeColor = Color.parseColor("#E0E0E0") // Default gray
+            }
+            "Rejected" -> {
+                holder.status.setTextColor(Color.parseColor("#F44336")) // Red
+                holder.cardItem.strokeColor = Color.parseColor("#E0E0E0") // Default gray
+            }
+            "Pending Approval" -> {
+                holder.status.setTextColor(Color.parseColor("#FF9800")) // Orange
+                holder.cardItem.strokeColor = Color.parseColor("#FF9800") // Orange highlight
+            }
+            else -> {
+                holder.status.setTextColor(Color.parseColor("#FF9800")) // Orange
+                holder.cardItem.strokeColor = Color.parseColor("#FF9800") // Orange highlight
+            }
         }
 
         // Set click listeners for the buttons

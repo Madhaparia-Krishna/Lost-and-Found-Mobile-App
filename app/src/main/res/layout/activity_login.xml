@@ -28,8 +28,19 @@
         android:id="@+id/btnLogin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="8dp"
         android:text="@string/login_button" />
+
+    <TextView
+        android:id="@+id/tvForgotPassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="@string/forgot_password"
+        android:textColor="?android:attr/textColorLink"
+        android:textSize="14sp"
+        android:clickable="true"
+        android:focusable="true" />
 
     <Button
         android:id="@+id/btnGoogleLogin"

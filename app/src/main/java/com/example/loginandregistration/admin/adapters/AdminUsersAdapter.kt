@@ -55,7 +55,7 @@ class AdminUsersAdapter(
             
             // Join date
             val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-            tvJoinDate.text = "Joined: ${sdf.format(Date(user.createdAt))}"
+            tvJoinDate.text = "Joined: ${sdf.format(user.createdAt.toDate())}"
             
             // Role chip
             chipRole.text = user.role.name
@@ -73,8 +73,8 @@ class AdminUsersAdapter(
                 if (user.isBlocked) R.drawable.ic_check else R.drawable.ic_block
             )
             
-            // Load avatar
-            if (user.photoUrl.isNotEmpty()) {
+            // Load avatar - handle nullable photoUrl properly
+            if (!user.photoUrl.isNullOrEmpty()) {
                 Glide.with(itemView.context)
                     .load(user.photoUrl)
                     .placeholder(R.drawable.ic_person_placeholder)

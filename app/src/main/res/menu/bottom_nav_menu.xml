@@ -10,12 +10,6 @@
         android:id="@+id/nav_browse"
         android:icon="@drawable/ic_search"
         android:title="@string/menu_browse" />
-
-    <item
-        android:id="@+id/nav_report"
-        android:icon="@drawable/ic_add"
-        android:title="@string/menu_report" />
-
     <item
         android:id="@+id/nav_profile"
         android:icon="@drawable/ic_person"

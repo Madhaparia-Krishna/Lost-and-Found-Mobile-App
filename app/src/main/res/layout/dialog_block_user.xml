@@ -7,18 +7,18 @@
     android:padding="24dp">
 
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Block User"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="8dp" />
 
     <TextView
-        android:id="@+id/tvUserInfo"
-        android:layout_width="wrap_content"
+        android:id="@+id/tvBlockMessage"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Are you sure you want to block this user?"
+        android:text="Are you sure you want to block this user? They will not be able to log in until unblocked."
         android:textSize="14sp"
         android:layout_marginBottom="16dp" />
 
@@ -27,17 +27,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Reason for blocking (required)"
-        app:errorEnabled="true"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+        android:layout_marginBottom="16dp"
+        app:counterEnabled="true"
+        app:counterMaxLength="200">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etBlockReason"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minLines="3"
-            android:maxLines="5"
-            android:gravity="top|start"
-            android:inputType="textMultiLine|textCapSentences" />
+            android:inputType="textMultiLine"
+            android:lines="3"
+            android:maxLength="200"
+            android:gravity="top|start" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -45,7 +46,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="16dp"
         android:gravity="end">
 
         <com.google.android.material.button.MaterialButton

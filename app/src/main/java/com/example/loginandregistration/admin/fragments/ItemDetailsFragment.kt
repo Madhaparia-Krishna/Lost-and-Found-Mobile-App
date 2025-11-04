@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -34,6 +35,7 @@ class ItemDetailsFragment : Fragment() {
     private lateinit var statusHistoryAdapter: StatusHistoryAdapter
     
     // Views
+    private lateinit var btnBack: android.widget.ImageButton
     private lateinit var ivItemImage: ImageView
     private lateinit var tvItemName: TextView
     private lateinit var tvItemDescription: TextView
@@ -70,7 +72,9 @@ class ItemDetailsFragment : Fragment() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        itemId = arguments?.getString(ARG_ITEM_ID)
+        // Support both manual arguments and navigation args
+        itemId = arguments?.getString(ARG_ITEM_ID) 
+            ?: arguments?.getString("item_id")
     }
     
     override fun onCreateView(
@@ -94,6 +98,7 @@ class ItemDetailsFragment : Fragment() {
     }
     
     private fun initViews(view: View) {
+        btnBack = view.findViewById(R.id.btnBack)
         ivItemImage = view.findViewById(R.id.ivItemImage)
         tvItemName = view.findViewById(R.id.tvItemName)
         tvItemDescription = view.findViewById(R.id.tvItemDescription)
@@ -123,6 +128,10 @@ class ItemDetailsFragment : Fragment() {
     }
     
     private fun setupClickListeners() {
+        btnBack.setOnClickListener {
+            findNavController().navigateUp()
+        }
+        
         btnEdit.setOnClickListener {
             currentItem?.let { item ->
                 showEditItemDialog(item)
@@ -149,6 +158,8 @@ class ItemDetailsFragment : Fragment() {
         viewModel.successMessage.observe(viewLifecycleOwner) { message ->
             if (message.isNotEmpty()) {
                 Snackbar.make(requireView(), message, Snackbar.LENGTH_SHORT).show()
+                // Reload item details after successful status update
+                itemId?.let { viewModel.loadItemDetails(it) }
             }
         }
         
@@ -160,8 +171,8 @@ class ItemDetailsFragment : Fragment() {
     }
     
     private fun displayItemDetails(item: EnhancedLostFoundItem) {
-        // Load image
-        if (item.imageUrl.isNotEmpty()) {
+        // Load image - handle nullable imageUrl properly
+        if (!item.imageUrl.isNullOrEmpty()) {
             Glide.with(this)
                 .load(item.imageUrl)
                 .placeholder(R.drawable.ic_image_placeholder)
@@ -251,7 +262,10 @@ class ItemDetailsFragment : Fragment() {
     }
     
     private fun showStatusChangeDialog(item: EnhancedLostFoundItem) {
-        val dialog = StatusChangeDialog.newInstance(item)
+        val dialog = StatusChangeDialog.newInstance(item) { newStatus ->
+            // Callback invoked when status is changed
+            viewModel.updateItemStatus(item.id, newStatus)
+        }
         dialog.show(parentFragmentManager, "StatusChangeDialog")
     }
     

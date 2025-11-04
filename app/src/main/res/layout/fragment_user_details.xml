@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:layout_height="match_parent">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
 
         <!-- User Profile Card -->
         <com.google.android.material.card.MaterialCardView
@@ -308,12 +312,36 @@
                 android:id="@+id/btnBlockUnblock"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:text="Block User"
                 app:icon="@drawable/ic_block"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDeleteUser"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Delete User"
+                android:textColor="@android:color/holo_red_dark"
+                app:icon="@drawable/ic_delete"
+                app:iconTint="@android:color/holo_red_dark"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                app:strokeColor="@android:color/holo_red_dark" />
 
         </LinearLayout>
 
     </LinearLayout>
 
-</ScrollView>
+    </ScrollView>
+
+    <!-- Back Button -->
+    <ImageButton
+        android:id="@+id/btnBack"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_margin="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/back_button"
+        android:src="@drawable/ic_arrow_back" />
+
+</FrameLayout>

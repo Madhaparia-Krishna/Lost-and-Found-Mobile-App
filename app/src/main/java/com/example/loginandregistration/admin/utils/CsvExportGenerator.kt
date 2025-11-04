@@ -88,6 +88,17 @@ class CsvExportGenerator(private val context: Context) {
     }
 
     /**
+     * Formats a Firebase Timestamp to a readable date-time string
+     */
+    private fun formatDateTime(timestamp: com.google.firebase.Timestamp?): String {
+        return if (timestamp != null) {
+            dateFormat.format(timestamp.toDate())
+        } else {
+            ""
+        }
+    }
+
+    /**
      * Generates a CSV export for items
      * Requirements: 4.3, 4.9
      */

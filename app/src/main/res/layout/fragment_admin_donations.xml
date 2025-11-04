@@ -1,107 +1,106 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
-    <!-- Tab Layout for Donation Status -->
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tabLayout"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary"
-        app:tabTextColor="@android:color/white"
-        app:tabSelectedTextColor="@android:color/white"
-        app:tabIndicatorColor="@android:color/white"
-        app:tabMode="fixed"
-        app:tabGravity="fill" />
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-    <!-- Filter Section -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp">
-
-        <LinearLayout
+        <!-- Tab Layout for Donation Status -->
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:background="?attr/colorPrimary"
+            app:tabTextColor="@android:color/white"
+            app:tabSelectedTextColor="@android:color/white"
+            app:tabIndicatorColor="@android:color/white"
+            app:tabMode="fixed"
+            app:tabGravity="fill" />
 
-            <!-- Category Filter Label -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Category Filter"
-                android:textStyle="bold"
-                android:textSize="14sp" />
-
-            <!-- Category Filter Chips -->
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/categoryChipGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:singleSelection="true"
-                app:selectionRequired="true" />
-
-            <!-- Age Range Filter Label -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="Age Range Filter"
-                android:textStyle="bold"
-                android:textSize="14sp" />
-
-            <!-- Age Range Filter Chips -->
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/ageRangeChipGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:singleSelection="true"
-                app:selectionRequired="true" />
-
-            <!-- Location Filter Label -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="Location Filter"
-                android:textStyle="bold"
-                android:textSize="14sp" />
-
-            <!-- Location Filter Chips -->
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/locationChipGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:singleSelection="true"
-                app:selectionRequired="true" />
-
-        </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- Donation Queue List -->
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipeRefresh"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvDonations"
+        <!-- Donation Queue List -->
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipeRefresh"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="16dp"
-            android:clipToPadding="false" />
+            android:layout_height="0dp"
+            android:layout_weight="1">
 
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
 
-</LinearLayout>
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvDonations"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="16dp"
+                    android:clipToPadding="false" />
+
+                <!-- Empty State View -->
+                <LinearLayout
+                    android:id="@+id/emptyStateView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="32dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:layout_width="120dp"
+                        android:layout_height="120dp"
+                        android:src="@drawable/ic_empty_box"
+                        android:alpha="0.5"
+                        android:contentDescription="@string/no_donations" />
+
+                    <TextView
+                        android:id="@+id/tvEmptyTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/no_donations_title"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="?android:attr/textColorPrimary" />
+
+                    <TextView
+                        android:id="@+id/tvEmptyMessage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/no_donations_message"
+                        android:textSize="14sp"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:gravity="center" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRetry"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        android:text="@string/retry"
+                        android:visibility="gone"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                </LinearLayout>
+
+            </FrameLayout>
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    </LinearLayout>
+
+    <!-- FAB for Advanced Filters -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabFilter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:contentDescription="@string/advanced_filters"
+        app:srcCompat="@drawable/ic_filter" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

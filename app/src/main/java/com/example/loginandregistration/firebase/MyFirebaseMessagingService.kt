@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.loginandregistration.MainActivity
+import com.example.loginandregistration.Notification
 import com.example.loginandregistration.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -153,6 +154,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     /**
      * Gets the appropriate channel ID based on notification type
+     * Requirements: 11.7
      */
     private fun getChannelIdForType(type: String): String {
         return when (type) {
@@ -160,12 +162,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             "REQUEST_APPROVED", "REQUEST_DENIED" -> CHANNEL_ID_REQUEST_UPDATE
             "DONATION_NOTICE", "CUSTOM_ADMIN", "SECURITY_ALERT" -> CHANNEL_ID_ADMIN_ALERT
             "SYSTEM_ANNOUNCEMENT" -> CHANNEL_ID_SYSTEM
+            // New notification types for found items and claims
+            Notification.TYPE_FOUND_ITEM_SUBMITTED -> CHANNEL_ID_ADMIN_ALERT
+            Notification.TYPE_FOUND_ITEM_APPROVED -> CHANNEL_ID_REQUEST_UPDATE
+            Notification.TYPE_FOUND_ITEM_REJECTED -> CHANNEL_ID_REQUEST_UPDATE
+            Notification.TYPE_CLAIM_SUBMITTED -> CHANNEL_ID_ADMIN_ALERT
+            Notification.TYPE_CLAIM_APPROVED -> CHANNEL_ID_REQUEST_UPDATE
+            Notification.TYPE_CLAIM_REJECTED -> CHANNEL_ID_REQUEST_UPDATE
             else -> CHANNEL_ID_SYSTEM
         }
     }
 
     /**
      * Gets the appropriate notification ID based on notification type
+     * Requirements: 11.7
      */
     private fun getNotificationIdForType(type: String): Int {
         return when (type) {
@@ -173,6 +183,13 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             "REQUEST_APPROVED", "REQUEST_DENIED" -> NOTIFICATION_ID_REQUEST
             "DONATION_NOTICE", "CUSTOM_ADMIN", "SECURITY_ALERT" -> NOTIFICATION_ID_ADMIN
             "SYSTEM_ANNOUNCEMENT" -> NOTIFICATION_ID_SYSTEM
+            // New notification types for found items and claims
+            Notification.TYPE_FOUND_ITEM_SUBMITTED -> NOTIFICATION_ID_ADMIN
+            Notification.TYPE_FOUND_ITEM_APPROVED -> NOTIFICATION_ID_REQUEST
+            Notification.TYPE_FOUND_ITEM_REJECTED -> NOTIFICATION_ID_REQUEST
+            Notification.TYPE_CLAIM_SUBMITTED -> NOTIFICATION_ID_ADMIN
+            Notification.TYPE_CLAIM_APPROVED -> NOTIFICATION_ID_REQUEST
+            Notification.TYPE_CLAIM_REJECTED -> NOTIFICATION_ID_REQUEST
             else -> NOTIFICATION_ID_SYSTEM
         }
     }

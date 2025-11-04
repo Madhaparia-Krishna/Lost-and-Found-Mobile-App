@@ -20,6 +20,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.example.loginandregistration.utils.EditTextUtils
 
 /**
  * Dialog for editing item details
@@ -120,10 +121,10 @@ class EditItemDialog : DialogFragment() {
     
     private fun populateFields() {
         currentItem?.let { item ->
-            etItemName.setText(item.name)
-            etItemDescription.setText(item.description)
-            etItemLocation.setText(item.location)
-            etItemContact.setText(item.contactInfo)
+            EditTextUtils.safeSetText(etItemName, item.name)
+            EditTextUtils.safeSetText(etItemDescription, item.description)
+            EditTextUtils.safeSetText(etItemLocation, item.location)
+            EditTextUtils.safeSetText(etItemContact, item.contactInfo)
             actvCategory.setText(item.category, false)
             
             // Load current image

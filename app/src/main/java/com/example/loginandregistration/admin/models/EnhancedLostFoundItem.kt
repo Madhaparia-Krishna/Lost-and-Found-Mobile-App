@@ -49,19 +49,48 @@ data class EnhancedLostFoundItem(
 
     /**
      * Checks if the item is eligible for donation (1 year old)
+     * Requirements: 3.1
      */
     fun isEligibleForDonation(): Boolean {
-        val oneYearInMillis = 365L * 24 * 60 * 60 * 1000
-        val itemAge = System.currentTimeMillis() - timestamp.toDate().time
-        return itemAge >= oneYearInMillis && status == ItemStatus.ACTIVE
+        return try {
+            val oneYearInMillis = 365L * 24 * 60 * 60 * 1000
+            val timestampMillis = timestamp.toDate().time
+            
+            // Validate timestamp is not in the future or invalid
+            if (timestampMillis > System.currentTimeMillis() || timestampMillis <= 0) {
+                android.util.Log.w("EnhancedLostFoundItem", "Invalid timestamp for item $id: $timestampMillis")
+                return false
+            }
+            
+            val itemAge = System.currentTimeMillis() - timestampMillis
+            itemAge >= oneYearInMillis && status == ItemStatus.ACTIVE
+        } catch (e: Exception) {
+            android.util.Log.e("EnhancedLostFoundItem", "Error checking donation eligibility for item $id", e)
+            false
+        }
     }
 
     /**
      * Gets the age of the item in days
+     * Returns -1 if timestamp is invalid
+     * Requirements: 3.1
      */
     fun getAgeInDays(): Long {
-        val ageInMillis = System.currentTimeMillis() - timestamp.toDate().time
-        return ageInMillis / (24 * 60 * 60 * 1000)
+        return try {
+            val timestampMillis = timestamp.toDate().time
+            
+            // Validate timestamp is not in the future or invalid
+            if (timestampMillis > System.currentTimeMillis() || timestampMillis <= 0) {
+                android.util.Log.w("EnhancedLostFoundItem", "Invalid timestamp for item $id: $timestampMillis")
+                return -1
+            }
+            
+            val ageInMillis = System.currentTimeMillis() - timestampMillis
+            ageInMillis / (24 * 60 * 60 * 1000)
+        } catch (e: Exception) {
+            android.util.Log.e("EnhancedLostFoundItem", "Error calculating age for item $id", e)
+            -1
+        }
     }
 
     /**

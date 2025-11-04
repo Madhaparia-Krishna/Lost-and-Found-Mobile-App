@@ -1,5 +1,8 @@
 *.iml
 .gradle
+.kiro/
+readme files/
+tests/
 /local.properties
 /.idea/caches
 /.idea/libraries

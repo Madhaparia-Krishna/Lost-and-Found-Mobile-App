@@ -1,22 +1,27 @@
 package com.example.loginandregistration.admin.dialogs
 
+import android.app.Dialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
 import com.example.loginandregistration.R
 import com.example.loginandregistration.admin.models.AdminUser
+import com.example.loginandregistration.admin.models.UserRole
 import com.example.loginandregistration.admin.viewmodel.AdminDashboardViewModel
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.example.loginandregistration.utils.EditTextUtils
 
 /**
  * Dialog for editing user details
- * Requirements: 1.6
+ * Requirements: 6.3, 6.4, 6.5
  */
 class EditUserDialog : DialogFragment() {
     
@@ -24,26 +29,32 @@ class EditUserDialog : DialogFragment() {
     
     private lateinit var tilDisplayName: TextInputLayout
     private lateinit var etDisplayName: TextInputEditText
-    private lateinit var tilEmail: TextInputLayout
-    private lateinit var etEmail: TextInputEditText
+    private lateinit var rgRole: RadioGroup
+    private lateinit var rbUser: RadioButton
+    private lateinit var rbStudent: RadioButton
+    private lateinit var rbModerator: RadioButton
+    private lateinit var rbSecurity: RadioButton
+    private lateinit var rbAdmin: RadioButton
     private lateinit var btnCancel: MaterialButton
     private lateinit var btnSave: MaterialButton
     
-    private var user: AdminUser? = null
+    private var currentUser: AdminUser? = null
     
     companion object {
-        private const val ARG_USER_UID = "user_uid"
-        private const val ARG_USER_NAME = "user_name"
-        private const val ARG_USER_EMAIL = "user_email"
-        private const val ARG_USER_PHOTO = "user_photo"
+        private const val ARG_USER = "user"
         
         fun newInstance(user: AdminUser): EditUserDialog {
             val dialog = EditUserDialog()
             val args = Bundle()
-            args.putString(ARG_USER_UID, user.uid)
-            args.putString(ARG_USER_NAME, user.displayName)
-            args.putString(ARG_USER_EMAIL, user.email)
-            args.putString(ARG_USER_PHOTO, user.photoUrl)
+            args.putString(ARG_USER + "_uid", user.uid)
+            args.putString(ARG_USER + "_email", user.email)
+            args.putString(ARG_USER + "_displayName", user.displayName)
+            args.putString(ARG_USER + "_photoUrl", user.photoUrl)
+            args.putString(ARG_USER + "_role", user.role.name)
+            args.putBoolean(ARG_USER + "_isBlocked", user.isBlocked)
+            args.putInt(ARG_USER + "_itemsReported", user.itemsReported)
+            args.putInt(ARG_USER + "_itemsFound", user.itemsFound)
+            args.putInt(ARG_USER + "_itemsClaimed", user.itemsClaimed)
             dialog.arguments = args
             return dialog
         }
@@ -61,7 +72,7 @@ class EditUserDialog : DialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         
         initViews(view)
-        populateFields()
+        loadUserData()
         setupClickListeners()
     }
     
@@ -77,15 +88,54 @@ class EditUserDialog : DialogFragment() {
     private fun initViews(view: View) {
         tilDisplayName = view.findViewById(R.id.tilDisplayName)
         etDisplayName = view.findViewById(R.id.etDisplayName)
-        tilEmail = view.findViewById(R.id.tilEmail)
-        etEmail = view.findViewById(R.id.etEmail)
+        rgRole = view.findViewById(R.id.rgRole)
+        rbUser = view.findViewById(R.id.rbUser)
+        rbStudent = view.findViewById(R.id.rbStudent)
+        rbModerator = view.findViewById(R.id.rbModerator)
+        rbSecurity = view.findViewById(R.id.rbSecurity)
+        rbAdmin = view.findViewById(R.id.rbAdmin)
         btnCancel = view.findViewById(R.id.btnCancel)
         btnSave = view.findViewById(R.id.btnSave)
     }
     
-    private fun populateFields() {
-        etDisplayName.setText(arguments?.getString(ARG_USER_NAME) ?: "")
-        etEmail.setText(arguments?.getString(ARG_USER_EMAIL) ?: "")
+    private fun loadUserData() {
+        arguments?.let { args ->
+            val uid = args.getString(ARG_USER + "_uid", "")
+            val email = args.getString(ARG_USER + "_email", "")
+            val displayName = args.getString(ARG_USER + "_displayName", "")
+            val photoUrl = args.getString(ARG_USER + "_photoUrl", "")
+            val roleString = args.getString(ARG_USER + "_role", "USER")
+            val isBlocked = args.getBoolean(ARG_USER + "_isBlocked", false)
+            val itemsReported = args.getInt(ARG_USER + "_itemsReported", 0)
+            val itemsFound = args.getInt(ARG_USER + "_itemsFound", 0)
+            val itemsClaimed = args.getInt(ARG_USER + "_itemsClaimed", 0)
+            
+            val role = UserRole.fromString(roleString)
+            
+            currentUser = AdminUser(
+                uid = uid,
+                email = email,
+                displayName = displayName,
+                photoUrl = photoUrl,
+                role = role,
+                isBlocked = isBlocked,
+                itemsReported = itemsReported,
+                itemsFound = itemsFound,
+                itemsClaimed = itemsClaimed
+            )
+            
+            // Populate fields
+            EditTextUtils.safeSetText(etDisplayName, displayName)
+            
+            // Select appropriate role radio button
+            when (role) {
+                UserRole.USER -> rbUser.isChecked = true
+                UserRole.STUDENT -> rbStudent.isChecked = true
+                UserRole.MODERATOR -> rbModerator.isChecked = true
+                UserRole.SECURITY -> rbSecurity.isChecked = true
+                UserRole.ADMIN -> rbAdmin.isChecked = true
+            }
+        }
     }
     
     private fun setupClickListeners() {
@@ -99,55 +149,50 @@ class EditUserDialog : DialogFragment() {
     }
     
     private fun saveUserDetails() {
-        val displayName = etDisplayName.text?.toString()?.trim() ?: ""
+        val user = currentUser ?: return
+        
+        // Get updated values
+        val newDisplayName = etDisplayName.text.toString().trim()
         
         // Validate display name
-        if (displayName.isBlank()) {
+        if (newDisplayName.isEmpty()) {
             tilDisplayName.error = "Display name cannot be empty"
             return
         }
         
-        if (displayName.length < 2) {
-            tilDisplayName.error = "Display name must be at least 2 characters"
-            return
-        }
-        
-        if (displayName.length > 50) {
-            tilDisplayName.error = "Display name must be less than 50 characters"
-            return
-        }
-        
-        // Clear errors
         tilDisplayName.error = null
         
-        // Get user ID
-        val userId = arguments?.getString(ARG_USER_UID) ?: return
+        // Get selected role
+        val newRole = when (rgRole.checkedRadioButtonId) {
+            R.id.rbUser -> UserRole.USER
+            R.id.rbStudent -> UserRole.STUDENT
+            R.id.rbModerator -> UserRole.MODERATOR
+            R.id.rbSecurity -> UserRole.SECURITY
+            R.id.rbAdmin -> UserRole.ADMIN
+            else -> UserRole.USER
+        }
+        
+        // Check if anything changed
+        if (newDisplayName == user.displayName && newRole == user.role) {
+            view?.let { v ->
+                Snackbar.make(v, "No changes to save", Snackbar.LENGTH_SHORT).show()
+            }
+            return
+        }
         
         // Prepare updates map
         val updates = mutableMapOf<String, Any>()
         
-        // Only add displayName if it changed
-        val originalName = arguments?.getString(ARG_USER_NAME) ?: ""
-        if (displayName != originalName) {
-            updates["displayName"] = displayName
+        if (newDisplayName != user.displayName) {
+            updates["displayName"] = newDisplayName
         }
         
-        // Check if there are any changes
-        if (updates.isEmpty()) {
-            view?.let { v ->
-                Snackbar.make(v, "No changes to save", Snackbar.LENGTH_SHORT).show()
-            }
-            dismiss()
-            return
+        if (newRole != user.role) {
+            updates["role"] = newRole.name
         }
         
-        // Update user through ViewModel
-        viewModel.updateUserDetailsEnhanced(userId, updates)
-        
-        // Show success message
-        view?.let { v ->
-            Snackbar.make(v, "User details updated successfully", Snackbar.LENGTH_SHORT).show()
-        }
+        // Update user details via ViewModel
+        viewModel.updateUserDetailsEnhanced(user.uid, updates)
         
         // Dismiss dialog
         dismiss()

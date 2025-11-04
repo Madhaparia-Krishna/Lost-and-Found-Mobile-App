@@ -81,7 +81,7 @@ class NotificationHistoryAdapter(
             tvSentCount.text = totalSent.toString()
             tvDeliveredCount.text = notification.deliveredCount.toString()
             tvOpenedCount.text = notification.openedCount.toString()
-            tvOpenRate.text = String.format("%.1f%%", notification.getOpenRate())
+            tvOpenRate.text = String.format(Locale.getDefault(), "%.1f%%", notification.getOpenRate())
             
             // Set click listener
             itemView.setOnClickListener {

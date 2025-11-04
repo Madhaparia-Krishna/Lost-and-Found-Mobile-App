@@ -137,8 +137,8 @@ class NotificationDetailsDialog : DialogFragment() {
             tvFailed.text = notif.failedCount.toString()
             
             // Calculate and display percentages
-            tvDeliveryRate.text = String.format("%.1f%%", notif.getDeliveryRate())
-            tvOpenRate.text = String.format("%.1f%%", notif.getOpenRate())
+            tvDeliveryRate.text = String.format(Locale.getDefault(), "%.1f%%", notif.getDeliveryRate())
+            tvOpenRate.text = String.format(Locale.getDefault(), "%.1f%%", notif.getOpenRate())
             
             // Action URL (if present)
             if (notif.actionUrl.isNotBlank()) {
