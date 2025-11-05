@@ -43,7 +43,7 @@ class SecurityDashboardFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        recyclerView = view.findViewById(R.id.rv_security_reports)
+        recyclerView = view.findViewById(R.id.security_reports_recyclerview)
         recyclerView.layoutManager = LinearLayoutManager(context)
 
         // The adapter now needs callbacks for approve and reject actions

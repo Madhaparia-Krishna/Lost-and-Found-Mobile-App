@@ -33,7 +33,7 @@ class Login : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var oneTapClient: SignInClient
     private lateinit var signInRequest: BeginSignInRequest
-    // --- CHANGE END ---
+    private lateinit var db: FirebaseFirestore
     
     private var keepSplashScreen = true
 
@@ -205,7 +205,7 @@ class Login : AppCompatActivity() {
                     val isNewUser = task.result?.additionalUserInfo?.isNewUser ?: false
                     if (isNewUser) {
                         Log.d(TAG, "New user detected, creating Firestore document.")
-                        auth.currentUser?.let { createNewUserDocument(it) }
+                        auth.currentUser?.let { createNewUserDocument(it.uid, it.email) }
                     }
                     // Always check role after signing in
                     checkUserRoleAndRedirect()
