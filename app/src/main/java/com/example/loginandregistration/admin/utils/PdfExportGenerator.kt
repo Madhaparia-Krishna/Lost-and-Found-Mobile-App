@@ -405,8 +405,8 @@ class PdfExportGenerator(private val context: Context) {
                 val activeUsers = users.count { !it.isBlocked }
                 val blockedUsers = users.count { it.isBlocked }
                 val adminUsers = users.count { it.role == UserRole.ADMIN }
-                val moderatorUsers = users.count { it.role == UserRole.MODERATOR }
-                val regularUsers = users.count { it.role == UserRole.USER }
+                val securityUsers = users.count { it.role == UserRole.SECURITY }
+                val studentUsers = users.count { it.role == UserRole.STUDENT }
                 
                 val totalItemsReported = users.sumOf { it.itemsReported }
                 val totalItemsFound = users.sumOf { it.itemsFound }
@@ -420,8 +420,8 @@ class PdfExportGenerator(private val context: Context) {
                     "Active Users" to activeUsers.toString(),
                     "Blocked Users" to blockedUsers.toString(),
                     "Admin Users" to adminUsers.toString(),
-                    "Moderator Users" to moderatorUsers.toString(),
-                    "Regular Users" to regularUsers.toString(),
+                    "Security Users" to securityUsers.toString(),
+                    "Student Users" to studentUsers.toString(),
                     "Total Items Reported" to totalItemsReported.toString(),
                     "Total Items Found" to totalItemsFound.toString(),
                     "Total Items Claimed" to totalItemsClaimed.toString(),
@@ -435,8 +435,8 @@ class PdfExportGenerator(private val context: Context) {
                 
                 val roleStats = mapOf(
                     "Admin" to "$adminUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", adminUsers * 100f / totalUsers) else "0"}%)",
-                    "Moderator" to "$moderatorUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", moderatorUsers * 100f / totalUsers) else "0"}%)",
-                    "User" to "$regularUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", regularUsers * 100f / totalUsers) else "0"}%)"
+                    "Security" to "$securityUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", securityUsers * 100f / totalUsers) else "0"}%)",
+                    "Student" to "$studentUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", studentUsers * 100f / totalUsers) else "0"}%)"
                 )
                 
                 document.add(createStatsTable(roleStats))
@@ -684,7 +684,8 @@ class PdfExportGenerator(private val context: Context) {
                 val activeUsers = users.count { !it.isBlocked }
                 val blockedUsers = users.count { it.isBlocked }
                 val adminUsers = users.count { it.role == UserRole.ADMIN }
-                val moderatorUsers = users.count { it.role == UserRole.MODERATOR }
+                val securityUsers = users.count { it.role == UserRole.SECURITY }
+                val studentUsers = users.count { it.role == UserRole.STUDENT }
                 
                 val totalItemsReported = users.sumOf { it.itemsReported }
                 val avgItemsPerUser = if (totalUsers > 0) {
@@ -696,7 +697,8 @@ class PdfExportGenerator(private val context: Context) {
                     "Active Users" to "$activeUsers (${if (totalUsers > 0) String.format(Locale.getDefault(), "%.1f", activeUsers * 100f / totalUsers) else "0"}%)",
                     "Blocked Users" to blockedUsers.toString(),
                     "Admin Users" to adminUsers.toString(),
-                    "Moderator Users" to moderatorUsers.toString(),
+                    "Security Users" to securityUsers.toString(),
+                    "Student Users" to studentUsers.toString(),
                     "Avg Items Per User" to avgItemsPerUser
                 )
                 

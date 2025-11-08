@@ -331,9 +331,10 @@ class AdminRepository {
                 .await()
             
             val previousRole = try {
-                UserRole.valueOf(userDoc.getString("role") ?: "USER")
+                val roleString = userDoc.getString("role") ?: "STUDENT"
+                UserRole.fromString(roleString)
             } catch (e: Exception) {
-                UserRole.USER
+                UserRole.STUDENT
             }
             
             firestore.collection(USERS_COLLECTION)
@@ -790,6 +791,38 @@ class AdminRepository {
     }
     
     /**
+     * Simple updateUser method for basic user updates
+     * Requirements: 7.2, 7.4, 7.5
+     */
+    suspend fun updateUser(userId: String, updates: Map<String, Any>): Result<Unit> {
+        return try {
+            requireAdminAccess()
+            
+            if (updates.isEmpty()) {
+                return Result.failure(IllegalArgumentException("No updates provided"))
+            }
+            
+            val currentUser = auth.currentUser
+                ?: return Result.failure(SecurityException("Not authenticated"))
+            
+            // Use Firestore update() method to save changes
+            firestore.collection(USERS_COLLECTION)
+                .document(userId)
+                .update(updates)
+                .await()
+            
+            Log.d(TAG, "User $userId updated successfully")
+            Result.success(Unit)
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Security error updating user", e)
+            Result.failure(e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating user", e)
+            Result.failure(Exception("Failed to update user: ${e.message}"))
+        }
+    }
+    
+    /**
      * Delete a user from Firestore and Firebase Authentication
      * Requirements: 6.6, 6.7, 6.11
      * 
@@ -1198,6 +1231,38 @@ class AdminRepository {
         } catch (e: Exception) {
             Log.e(TAG, "Error updating item details", e)
             Result.failure(Exception("Failed to update item details: ${e.message}"))
+        }
+    }
+    
+    /**
+     * Simple updateItem method for basic item updates
+     * Requirements: 7.2, 7.4, 7.5
+     */
+    suspend fun updateItem(itemId: String, updates: Map<String, Any>): Result<Unit> {
+        return try {
+            requireAdminAccess()
+            
+            if (updates.isEmpty()) {
+                return Result.failure(IllegalArgumentException("No updates provided"))
+            }
+            
+            val currentUser = auth.currentUser
+                ?: return Result.failure(SecurityException("Not authenticated"))
+            
+            // Use Firestore update() method to save changes
+            firestore.collection(ITEMS_COLLECTION)
+                .document(itemId)
+                .update(updates)
+                .await()
+            
+            Log.d(TAG, "Item $itemId updated successfully")
+            Result.success(Unit)
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Security error updating item", e)
+            Result.failure(e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating item", e)
+            Result.failure(Exception("Failed to update item: ${e.message}"))
         }
     }
     
@@ -2286,9 +2351,10 @@ class AdminRepository {
                                     actorId = data["actorId"] as? String ?: "",
                                     actorEmail = data["actorEmail"] as? String ?: "",
                                     actorRole = try {
-                                        UserRole.valueOf(data["actorRole"] as? String ?: "USER")
+                                        val roleString = data["actorRole"] as? String ?: "STUDENT"
+                                        UserRole.fromString(roleString)
                                     } catch (e: Exception) {
-                                        UserRole.USER
+                                        UserRole.STUDENT
                                     },
                                     actionType = try {
                                         ActionType.valueOf(data["actionType"] as? String ?: "USER_LOGIN")
@@ -2377,9 +2443,10 @@ class AdminRepository {
                         actorId = data["actorId"] as? String ?: "",
                         actorEmail = data["actorEmail"] as? String ?: "",
                         actorRole = try {
-                            UserRole.valueOf(data["actorRole"] as? String ?: "USER")
+                            val roleString = data["actorRole"] as? String ?: "STUDENT"
+                            UserRole.fromString(roleString)
                         } catch (e: Exception) {
-                            UserRole.USER
+                            UserRole.STUDENT
                         },
                         actionType = try {
                             ActionType.valueOf(data["actionType"] as? String ?: "USER_LOGIN")
@@ -2500,9 +2567,9 @@ class AdminRepository {
                         actorId = data["actorId"] as? String ?: "",
                         actorEmail = data["actorEmail"] as? String ?: "",
                         actorRole = try {
-                            UserRole.valueOf(data["actorRole"] as? String ?: "USER")
+                            UserRole.fromString(data["actorRole"] as? String ?: "STUDENT")
                         } catch (e: Exception) {
-                            UserRole.USER
+                            UserRole.STUDENT
                         },
                         actionType = try {
                             ActionType.valueOf(data["actionType"] as? String ?: "USER_LOGIN")
@@ -2569,9 +2636,9 @@ class AdminRepository {
                         actorId = data["actorId"] as? String ?: "",
                         actorEmail = data["actorEmail"] as? String ?: "",
                         actorRole = try {
-                            UserRole.valueOf(data["actorRole"] as? String ?: "USER")
+                            UserRole.fromString(data["actorRole"] as? String ?: "STUDENT")
                         } catch (e: Exception) {
-                            UserRole.USER
+                            UserRole.STUDENT
                         },
                         actionType = try {
                             ActionType.valueOf(data["actionType"] as? String ?: "USER_LOGIN")
@@ -2638,9 +2705,9 @@ class AdminRepository {
                         actorId = data["actorId"] as? String ?: "",
                         actorEmail = data["actorEmail"] as? String ?: "",
                         actorRole = try {
-                            UserRole.valueOf(data["actorRole"] as? String ?: "USER")
+                            UserRole.fromString(data["actorRole"] as? String ?: "STUDENT")
                         } catch (e: Exception) {
-                            UserRole.USER
+                            UserRole.STUDENT
                         },
                         actionType = try {
                             ActionType.valueOf(data["actionType"] as? String ?: "USER_LOGIN")
@@ -2682,7 +2749,7 @@ class AdminRepository {
      * Log user login event
      * Requirements: 5.7
      */
-    suspend fun logUserLogin(userId: String, userEmail: String, userRole: UserRole = UserRole.USER): Result<Unit> {
+    suspend fun logUserLogin(userId: String, userEmail: String, userRole: UserRole = UserRole.STUDENT): Result<Unit> {
         return try {
             val activityLog = ActivityLog(
                 id = firestore.collection(ACTIVITY_LOGS_COLLECTION).document().id,
@@ -2720,7 +2787,7 @@ class AdminRepository {
      * Log user logout event
      * Requirements: 5.7
      */
-    suspend fun logUserLogout(userId: String, userEmail: String, userRole: UserRole = UserRole.USER): Result<Unit> {
+    suspend fun logUserLogout(userId: String, userEmail: String, userRole: UserRole = UserRole.STUDENT): Result<Unit> {
         return try {
             val activityLog = ActivityLog(
                 id = firestore.collection(ACTIVITY_LOGS_COLLECTION).document().id,
@@ -2758,7 +2825,7 @@ class AdminRepository {
                 id = firestore.collection(ACTIVITY_LOGS_COLLECTION).document().id,
                 actorId = userId,
                 actorEmail = userEmail,
-                actorRole = UserRole.USER,
+                actorRole = UserRole.STUDENT,
                 actionType = ActionType.USER_REGISTER,
                 targetType = TargetType.USER,
                 targetId = userId,
@@ -2811,9 +2878,9 @@ class AdminRepository {
                         actorId = data["actorId"] as? String ?: "",
                         actorEmail = data["actorEmail"] as? String ?: "",
                         actorRole = try {
-                            UserRole.valueOf(data["actorRole"] as? String ?: "USER")
+                            UserRole.fromString(data["actorRole"] as? String ?: "STUDENT")
                         } catch (e: Exception) {
-                            UserRole.USER
+                            UserRole.STUDENT
                         },
                         actionType = try {
                             ActionType.valueOf(data["actionType"] as? String ?: "USER_LOGIN")

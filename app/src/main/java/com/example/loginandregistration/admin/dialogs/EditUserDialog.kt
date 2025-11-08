@@ -30,9 +30,7 @@ class EditUserDialog : DialogFragment() {
     private lateinit var tilDisplayName: TextInputLayout
     private lateinit var etDisplayName: TextInputEditText
     private lateinit var rgRole: RadioGroup
-    private lateinit var rbUser: RadioButton
     private lateinit var rbStudent: RadioButton
-    private lateinit var rbModerator: RadioButton
     private lateinit var rbSecurity: RadioButton
     private lateinit var rbAdmin: RadioButton
     private lateinit var btnCancel: MaterialButton
@@ -89,9 +87,7 @@ class EditUserDialog : DialogFragment() {
         tilDisplayName = view.findViewById(R.id.tilDisplayName)
         etDisplayName = view.findViewById(R.id.etDisplayName)
         rgRole = view.findViewById(R.id.rgRole)
-        rbUser = view.findViewById(R.id.rbUser)
         rbStudent = view.findViewById(R.id.rbStudent)
-        rbModerator = view.findViewById(R.id.rbModerator)
         rbSecurity = view.findViewById(R.id.rbSecurity)
         rbAdmin = view.findViewById(R.id.rbAdmin)
         btnCancel = view.findViewById(R.id.btnCancel)
@@ -127,11 +123,9 @@ class EditUserDialog : DialogFragment() {
             // Populate fields
             EditTextUtils.safeSetText(etDisplayName, displayName)
             
-            // Select appropriate role radio button
+            // Select appropriate role radio button - Requirement 10.3
             when (role) {
-                UserRole.USER -> rbUser.isChecked = true
                 UserRole.STUDENT -> rbStudent.isChecked = true
-                UserRole.MODERATOR -> rbModerator.isChecked = true
                 UserRole.SECURITY -> rbSecurity.isChecked = true
                 UserRole.ADMIN -> rbAdmin.isChecked = true
             }
@@ -162,14 +156,12 @@ class EditUserDialog : DialogFragment() {
         
         tilDisplayName.error = null
         
-        // Get selected role
+        // Get selected role - Requirement 10.3
         val newRole = when (rgRole.checkedRadioButtonId) {
-            R.id.rbUser -> UserRole.USER
             R.id.rbStudent -> UserRole.STUDENT
-            R.id.rbModerator -> UserRole.MODERATOR
             R.id.rbSecurity -> UserRole.SECURITY
             R.id.rbAdmin -> UserRole.ADMIN
-            else -> UserRole.USER
+            else -> UserRole.STUDENT
         }
         
         // Check if anything changed

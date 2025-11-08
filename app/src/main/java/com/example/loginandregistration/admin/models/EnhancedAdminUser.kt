@@ -13,7 +13,7 @@ data class EnhancedAdminUser(
     val email: String = "",
     val displayName: String = "",
     val photoUrl: String = "",
-    val role: UserRole = UserRole.USER,
+    val role: UserRole = UserRole.STUDENT,
     val isBlocked: Boolean = false,
     val createdAt: Timestamp = Timestamp.now(),
     val lastLoginAt: Timestamp? = null,

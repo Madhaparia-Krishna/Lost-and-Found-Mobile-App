@@ -385,6 +385,26 @@ class AdminDashboardViewModel : ViewModel() {
     }
     
     /**
+     * Simple updateUser method for basic user updates
+     * Requirements: 7.2, 7.3, 7.4
+     */
+    fun updateUser(userId: String, updates: Map<String, Any>) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.updateUser(userId, updates)
+                .onSuccess {
+                    _successMessage.value = "User updated successfully"
+                    // Refresh all users list
+                    loadAllUsers()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to update user: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
      * Delete a user
      * Requirements: 6.6, 6.7, 6.11
      */
@@ -477,6 +497,26 @@ class AdminDashboardViewModel : ViewModel() {
                 }
                 .onFailure { e ->
                     _error.value = "Failed to update item details: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Simple updateItem method for basic item updates
+     * Requirements: 7.2, 7.3, 7.4
+     */
+    fun updateItem(itemId: String, updates: Map<String, Any>) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.updateItem(itemId, updates)
+                .onSuccess {
+                    _successMessage.value = "Item updated successfully"
+                    // Refresh all items list
+                    loadAllItems()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to update item: ${e.message}"
                 }
             _isLoading.value = false
         }

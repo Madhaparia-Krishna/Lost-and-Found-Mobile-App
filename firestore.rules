@@ -10,6 +10,7 @@ service cloud.firestore {
     // Helper function to check if user is admin
     // Supports multiple methods: email check OR role field check
     // Supports both uppercase and lowercase for backward compatibility
+    // Requirement 10.4: Recognizes ADMIN as one of three valid roles
     function isAdmin() {
       return isAuthenticated() && 
              (request.auth.token.email == 'admin@gmail.com' ||
@@ -19,6 +20,7 @@ service cloud.firestore {
     
     // Helper function to check if user is security
     // Checks if email contains 'security' or if user has security role
+    // Requirement 10.4: Recognizes SECURITY as one of three valid roles
     function isSecurity() {
       return isAuthenticated() && 
              (request.auth.token.email.lower().matches('.*security.*') ||
@@ -34,10 +36,12 @@ service cloud.firestore {
     
     // Helper function to check if user is moderator or admin
     // Supports both uppercase and lowercase for backward compatibility
+    // Requirement 10.4: MODERATOR role is deprecated, maps to SECURITY or ADMIN
+    // This function now checks for SECURITY or ADMIN roles
     function isModerator() {
       return isAuthenticated() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'MODERATOR', 'admin', 'moderator'];
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'SECURITY', 'MODERATOR', 'admin', 'security', 'moderator'];
     }
     
     // Helper function to check for Security or Admin roles

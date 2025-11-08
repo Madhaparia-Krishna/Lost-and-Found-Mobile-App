@@ -47,6 +47,7 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
     companion object {
         private const val TAG = "BrowseTabFragment"
         private const val ARG_FILTER_TYPE = "filter_type"
+        private const val STATE_SEARCH_QUERY = "search_query"
         
         fun newInstance(filterType: TabFilterType): BrowseTabFragment {
             return BrowseTabFragment().apply {
@@ -69,6 +70,12 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
         arguments?.let {
             val filterTypeName = it.getString(ARG_FILTER_TYPE)
             filterType = TabFilterType.valueOf(filterTypeName ?: TabFilterType.LOST.name)
+        }
+        
+        // Restore search query on configuration changes
+        // Requirement: 4.3
+        savedInstanceState?.let {
+            currentSearchQuery = it.getString(STATE_SEARCH_QUERY, "")
         }
     }
     
@@ -164,7 +171,8 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
     private fun getItemsFlow() = callbackFlow {
         val currentUser = auth.currentUser
         val userEmail = currentUser?.email ?: ""
-        val isSecurity = UserRoleManager.canViewSensitiveInfo(userEmail)
+        // TODO: Fetch user role from Firestore for proper role checking
+        val isSecurity = UserRoleManager.canViewSensitiveInfo("", userEmail)
         
         val listener = db.collection("items")
             .orderBy("timestamp", Query.Direction.DESCENDING)
@@ -185,23 +193,24 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
                 } ?: emptyList()
                 
                 // Apply filter based on tab type
-                // Requirements: 6.2, 6.3, 6.4
+                // Requirements: 5.1, 5.2, 5.3, 6.2, 6.3, 6.4
+                // All authenticated users can read items with any status (Approved, Pending, Returned, Rejected)
                 val filteredItems = when (filterType) {
                     TabFilterType.LOST -> {
-                        // Show approved lost items
-                        allItems.filter { it.isLost && it.status == "Approved" }
+                        // Show all lost items regardless of status
+                        allItems.filter { it.isLost }
                     }
                     TabFilterType.FOUND -> {
-                        // Show approved found items
-                        allItems.filter { !it.isLost && it.status == "Approved" }
+                        // Show all found items regardless of status
+                        allItems.filter { !it.isLost }
                     }
                     TabFilterType.RETURNED -> {
                         // Show returned items (regardless of lost/found type)
                         allItems.filter { it.status == "Returned" }
                     }
                     TabFilterType.ALL -> {
-                        // Show all approved or returned items regardless of isLost
-                        allItems.filter { it.status == "Approved" || it.status == "Returned" }
+                        // Show all items regardless of status or isLost
+                        allItems
                     }
                 }
                 
@@ -293,5 +302,14 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
         } else {
             hideEmptyState()
         }
+    }
+    
+    /**
+     * Save search query state on configuration changes
+     * Requirement: 4.3
+     */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(STATE_SEARCH_QUERY, currentSearchQuery)
     }
 }

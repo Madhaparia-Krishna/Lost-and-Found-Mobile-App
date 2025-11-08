@@ -33,6 +33,9 @@ class HomeFragment : Fragment(), SearchableFragment {
     private lateinit var btnLoadMore: Button
     private lateinit var fabReport: com.google.android.material.floatingactionbutton.FloatingActionButton
     private lateinit var searchView: SearchView
+    private lateinit var tvAllItems: android.widget.TextView
+    private lateinit var tvLostItems: android.widget.TextView
+    private lateinit var tvFoundItems: android.widget.TextView
     
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -44,6 +47,13 @@ class HomeFragment : Fragment(), SearchableFragment {
     // Search state variables
     private var allItems: List<LostFoundItem> = emptyList()
     private var currentSearchQuery: String = ""
+    
+    // Filter state
+    private var currentFilter: FilterType = FilterType.ALL
+    
+    enum class FilterType {
+        ALL, LOST, FOUND
+    }
     
     companion object {
         private const val TAG = "HomeFragment"
@@ -96,6 +106,9 @@ class HomeFragment : Fragment(), SearchableFragment {
         btnLoadMore = view.findViewById(R.id.btn_load_more)
         fabReport = view.findViewById(R.id.fab_report)
         searchView = view.findViewById(R.id.search_view)
+        tvAllItems = view.findViewById(R.id.tv_all_items)
+        tvLostItems = view.findViewById(R.id.tv_lost_items)
+        tvFoundItems = view.findViewById(R.id.tv_found_items)
         
         // Optimize RecyclerView for better performance
         recyclerView.layoutManager = LinearLayoutManager(context)
@@ -127,10 +140,21 @@ class HomeFragment : Fragment(), SearchableFragment {
         // Set up search functionality
         setupSearchView()
         
+        // Set up filter buttons
+        setupFilterButtons()
+        
         loadRecentItems()
     }
     
     private fun setupSearchView() {
+        // Navigate to BrowseFragment when search view is clicked/focused
+        // Requirement 2.3: Navigate to BrowseFragment using FragmentManager transaction
+        searchView.setOnQueryTextFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                navigateToBrowseFragment()
+            }
+        }
+        
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 val searchQuery = query ?: ""
@@ -154,6 +178,106 @@ class HomeFragment : Fragment(), SearchableFragment {
         }
     }
     
+    /**
+     * Navigate to BrowseFragment for advanced search
+     * Requirement 2.3: Navigate to BrowseFragment using FragmentManager transaction
+     * Requirement 2.4: Add to back stack for proper navigation flow
+     */
+    private fun navigateToBrowseFragment() {
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.fragment_container, BrowseFragment())
+            .addToBackStack(null)
+            .commit()
+    }
+    
+    /**
+     * Set up click listeners for filter buttons
+     * Requirements: 2.1, 2.2, 2.4, 2.5
+     */
+    private fun setupFilterButtons() {
+        // All items filter
+        tvAllItems.setOnClickListener {
+            currentFilter = FilterType.ALL
+            updateButtonStates()
+            applyFilters()
+        }
+        
+        // Lost items filter - filter items where isLost equals true
+        // Requirement 2.1: Filter items where isLost equals true
+        tvLostItems.setOnClickListener {
+            currentFilter = FilterType.LOST
+            updateButtonStates()
+            applyFilters()
+        }
+        
+        // Found items filter - filter items where isLost equals false
+        // Requirement 2.2: Filter items where isLost equals false
+        tvFoundItems.setOnClickListener {
+            currentFilter = FilterType.FOUND
+            updateButtonStates()
+            applyFilters()
+        }
+    }
+    
+    /**
+     * Update visual feedback for filter buttons
+     * Requirement 2.5: Provide visual feedback when a filter button is selected
+     */
+    private fun updateButtonStates() {
+        val context = requireContext()
+        
+        // Reset all buttons to unselected state
+        tvAllItems.setBackgroundResource(R.drawable.tab_unselected_background)
+        tvAllItems.setTextColor(context.getColor(R.color.text_secondary))
+        
+        tvLostItems.setBackgroundResource(R.drawable.tab_unselected_background)
+        tvLostItems.setTextColor(context.getColor(R.color.text_secondary))
+        
+        tvFoundItems.setBackgroundResource(R.drawable.tab_unselected_background)
+        tvFoundItems.setTextColor(context.getColor(R.color.text_secondary))
+        
+        // Set selected button state
+        when (currentFilter) {
+            FilterType.ALL -> {
+                tvAllItems.setBackgroundResource(R.drawable.tab_selected_background)
+                tvAllItems.setTextColor(context.getColor(R.color.white))
+            }
+            FilterType.LOST -> {
+                tvLostItems.setBackgroundResource(R.drawable.tab_selected_background)
+                tvLostItems.setTextColor(context.getColor(R.color.white))
+            }
+            FilterType.FOUND -> {
+                tvFoundItems.setBackgroundResource(R.drawable.tab_selected_background)
+                tvFoundItems.setTextColor(context.getColor(R.color.white))
+            }
+        }
+    }
+    
+    /**
+     * Apply both filter and search to items
+     * Requirements: 2.1, 2.2, 2.4
+     */
+    private fun applyFilters() {
+        // First apply filter based on type
+        val filteredByType = when (currentFilter) {
+            FilterType.ALL -> allItems
+            FilterType.LOST -> allItems.filter { it.isLost }
+            FilterType.FOUND -> allItems.filter { !it.isLost }
+        }
+        
+        // Then apply search filter if there's a search query
+        val finalItems = if (currentSearchQuery.isBlank()) {
+            filteredByType
+        } else {
+            SearchManager.filterItems(filteredByType, currentSearchQuery)
+        }
+        
+        // Update adapter with filtered items
+        adapter.submitList(finalItems)
+        
+        Log.d(TAG, "Applied filters - Type: $currentFilter, Search: '$currentSearchQuery', Results: ${finalItems.size}")
+    }
+    
     private fun loadRecentItems() {
         // Use lifecycleScope to launch coroutine tied to fragment lifecycle
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
@@ -167,17 +291,20 @@ class HomeFragment : Fragment(), SearchableFragment {
                 val userEmail = currentUser?.email ?: ""
                 val isSecurity = UserRoleManager.canViewSensitiveInfo(userEmail)
                 
-                // Fetch data from Firestore on background thread
-                // Use default source which checks cache first, then server
+                // Fetch ALL items from Firestore without pagination limit
+                // Requirement 1.1: Remove pagination limit to fetch all items initially
                 val querySnapshot = db.collection("items")
                     .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .limit(ITEMS_PER_PAGE.toLong())
-                    .get()
+                    .get()  // Removed .limit() to fetch all items
                     .await()
                 
                 val finalSnapshot = querySnapshot
                 
-                // Store last visible item for pagination
+                // Log item count from Firestore
+                // Requirement 1.3: Add logging to track item count through data flow
+                Log.d(TAG, "Firestore query returned ${finalSnapshot.documents.size} documents")
+                
+                // Store last visible item for pagination (kept for potential future use)
                 if (finalSnapshot.documents.isNotEmpty()) {
                     lastVisibleItem = finalSnapshot.documents.last()
                 }
@@ -187,16 +314,20 @@ class HomeFragment : Fragment(), SearchableFragment {
                     try {
                         doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
                     } catch (e: Exception) {
+                        Log.w(TAG, "Failed to parse document ${doc.id}: ${e.message}")
                         null  // Skip problematic items silently
                     }
                 }
                 
-                // Filter items based on user role
-                val filteredItems = if (isSecurity) {
-                    fetchedItems
-                } else {
-                    fetchedItems.filter { it.status == "Approved" }
-                }
+                // Log successfully parsed items count
+                Log.d(TAG, "Successfully parsed ${fetchedItems.size} items from Firestore")
+                
+                // Requirement 5.1, 5.2: All authenticated users can read items with any status
+                // No client-side filtering by status - show all items
+                val filteredItems = fetchedItems
+                
+                // Log items count
+                Log.d(TAG, "Displaying ${filteredItems.size} items (all statuses included)")
                 
                 // Update UI on Main thread
                 withContext(Dispatchers.Main) {
@@ -204,33 +335,31 @@ class HomeFragment : Fragment(), SearchableFragment {
                     
                     if (filteredItems.isEmpty()) {
                         // Show empty state instead of adding sample data
+                        Log.d(TAG, "No items to display - showing empty state")
                         adapter.submitList(emptyList())
                         showLoadMoreButton(false)
                     } else {
                         // Store all items for search filtering
                         allItems = filteredItems
                         
-                        // Apply current search filter
-                        val displayItems = if (currentSearchQuery.isBlank()) {
-                            filteredItems
-                        } else {
-                            SearchManager.filterItems(filteredItems, currentSearchQuery)
-                        }
+                        // Apply current filters (both type and search)
+                        applyFilters()
                         
-                        adapter.submitList(displayItems)
-                        // Show Load More button if we got a full page
-                        showLoadMoreButton(filteredItems.size == ITEMS_PER_PAGE)
+                        // Hide Load More button since we're loading all items at once
+                        showLoadMoreButton(false)
                     }
                 }
                 
             } catch (e: FirebaseFirestoreException) {
                 // Handle Firestore-specific errors silently for better UX
+                Log.e(TAG, "Firestore error loading items: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     hideLoading()
                     adapter.submitList(emptyList())
                 }
             } catch (e: Exception) {
                 // Handle generic errors silently
+                Log.e(TAG, "Error loading items: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     hideLoading()
                     adapter.submitList(emptyList())
@@ -276,12 +405,9 @@ class HomeFragment : Fragment(), SearchableFragment {
                     }
                 }
                 
-                // Filter items based on user role
-                val filteredNewItems = if (isSecurity) {
-                    newItems
-                } else {
-                    newItems.filter { it.status == "Approved" }
-                }
+                // Requirement 5.1, 5.2: All authenticated users can read items with any status
+                // No client-side filtering by status - show all items
+                val filteredNewItems = newItems
                 
                 // Update UI on Main thread
                 withContext(Dispatchers.Main) {
@@ -294,14 +420,8 @@ class HomeFragment : Fragment(), SearchableFragment {
                         updatedAllItems.addAll(filteredNewItems)
                         allItems = updatedAllItems
                         
-                        // Apply current search filter
-                        val displayItems = if (currentSearchQuery.isBlank()) {
-                            allItems
-                        } else {
-                            SearchManager.filterItems(allItems, currentSearchQuery)
-                        }
-                        
-                        adapter.submitList(displayItems)
+                        // Apply current filters (both type and search)
+                        applyFilters()
                         
                         // Show/hide Load More button based on items count
                         showLoadMoreButton(filteredNewItems.size == ITEMS_PER_PAGE)
@@ -344,15 +464,6 @@ class HomeFragment : Fragment(), SearchableFragment {
      */
     override fun applySearchFilter(query: String) {
         currentSearchQuery = query
-        
-        // Apply search filter using SearchManager
-        val filteredItems = if (query.isBlank()) {
-            allItems
-        } else {
-            SearchManager.filterItems(allItems, query)
-        }
-        
-        // Update adapter with filtered items
-        adapter.submitList(filteredItems)
+        applyFilters()
     }
 }

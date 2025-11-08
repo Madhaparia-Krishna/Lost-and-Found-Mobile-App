@@ -11,7 +11,7 @@ data class User(
     val email: String = "",
     val displayName: String = "",      // Changed from name
     val photoUrl: String = "",         // New field
-    val role: String = "USER",         // New field
+    val role: String = "STUDENT",      // Default role - Requirement 10.2
     val isBlocked: Boolean = false,    // New field
     
     // Additional user fields
@@ -30,5 +30,5 @@ data class User(
     val itemsClaimed: Int = 0
 ) : Serializable {
     // Constructor for compatibility with Firestore
-    constructor() : this("", "", "", "", "USER", false, "", "", "", Timestamp.now(), Timestamp.now(), null, 0, 0, 0)
+    constructor() : this("", "", "", "", "STUDENT", false, "", "", "", Timestamp.now(), Timestamp.now(), null, 0, 0, 0)
 }

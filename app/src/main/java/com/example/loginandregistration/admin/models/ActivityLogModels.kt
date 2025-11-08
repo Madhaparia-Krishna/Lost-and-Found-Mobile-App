@@ -13,7 +13,7 @@ data class ActivityLog(
     val timestamp: Long = System.currentTimeMillis(),
     val actorId: String = "",
     val actorEmail: String = "",
-    val actorRole: UserRole = UserRole.USER,
+    val actorRole: UserRole = UserRole.STUDENT,
     val actionType: ActionType = ActionType.USER_LOGIN,
     val targetType: TargetType = TargetType.SYSTEM,
     val targetId: String = "",

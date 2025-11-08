@@ -25,6 +25,7 @@ class BrowseFragment : Fragment() {
     
     companion object {
         private const val TAG = "BrowseFragment"
+        private const val STATE_SEARCH_QUERY = "search_query"
     }
     
     override fun onCreateView(
@@ -42,8 +43,19 @@ class BrowseFragment : Fragment() {
         viewPager = view.findViewById(R.id.view_pager)
         searchView = view.findViewById(R.id.search_view)
         
+        // Restore search query on configuration changes
+        // Requirement: 4.3
+        savedInstanceState?.let {
+            currentSearchQuery = it.getString(STATE_SEARCH_QUERY, "")
+        }
+        
         setupViewPager()
         setupSearchView()
+        
+        // Restore search query in SearchView if it was saved
+        if (currentSearchQuery.isNotEmpty()) {
+            searchView.setQuery(currentSearchQuery, false)
+        }
     }
     
     private fun setupViewPager() {
@@ -115,5 +127,14 @@ class BrowseFragment : Fragment() {
         if (fragment is SearchableFragment) {
             fragment.applySearchFilter(query)
         }
+    }
+    
+    /**
+     * Save search query state on configuration changes
+     * Requirement: 4.3
+     */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(STATE_SEARCH_QUERY, currentSearchQuery)
     }
 }

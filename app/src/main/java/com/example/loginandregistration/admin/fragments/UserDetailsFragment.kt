@@ -225,10 +225,8 @@ class UserDetailsFragment : Fragment() {
     private fun getRoleColor(role: UserRole): Int {
         return when (role) {
             UserRole.ADMIN -> R.color.status_lost
-            UserRole.MODERATOR -> R.color.status_pending
             UserRole.SECURITY -> R.color.status_pending
             UserRole.STUDENT -> R.color.status_default
-            UserRole.USER -> R.color.status_default
         }
     }
     
@@ -255,20 +253,18 @@ class UserDetailsFragment : Fragment() {
     }
     
     private fun showRoleChangeDialog(user: AdminUser) {
-        // TODO: This will be implemented in task 9.5
-        // val dialog = RoleChangeDialog.newInstance(user)
-        // dialog.show(parentFragmentManager, "RoleChangeDialog")
+        // Requirement 10.3: Show only three valid roles
+        val roles = arrayOf("STUDENT", "SECURITY", "ADMIN")
+        val roleDisplayNames = arrayOf("Student", "Security", "Admin")
         
-        // Temporary implementation - show simple dialog
-        val roles = arrayOf("USER", "MODERATOR", "ADMIN")
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setTitle("Change User Role")
-            .setItems(roles) { _, which ->
+            .setItems(roleDisplayNames) { _, which ->
                 val newRole = when (which) {
-                    0 -> UserRole.USER
-                    1 -> UserRole.MODERATOR
+                    0 -> UserRole.STUDENT
+                    1 -> UserRole.SECURITY
                     2 -> UserRole.ADMIN
-                    else -> UserRole.USER
+                    else -> UserRole.STUDENT
                 }
                 viewModel.updateUserRole(user.uid, newRole)
             }

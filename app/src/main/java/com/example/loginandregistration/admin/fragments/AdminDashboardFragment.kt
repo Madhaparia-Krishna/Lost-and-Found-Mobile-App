@@ -187,10 +187,10 @@ class AdminDashboardFragment : Fragment() {
         tvActiveUsers.text = analytics.activeUsers.toString()
         tvBlockedUsers.text = analytics.blockedUsers.toString()
         
-        // Update users by role
+        // Update users by role - Requirement 10.4
         tvAdminCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.ADMIN] ?: 0).toString()
-        tvModeratorCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.MODERATOR] ?: 0).toString()
-        tvUserCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.USER] ?: 0).toString()
+        tvModeratorCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.SECURITY] ?: 0).toString()
+        tvUserCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.STUDENT] ?: 0).toString()
         
         // Update top contributors (show top 5)
         topContributorsAdapter.submitList(analytics.topContributors.take(5))

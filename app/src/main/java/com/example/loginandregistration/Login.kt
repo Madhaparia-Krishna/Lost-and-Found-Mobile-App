@@ -243,7 +243,7 @@ class Login : AppCompatActivity() {
                             auth.signOut()
                             Toast.makeText(
                                 this@Login,
-                                "Your account has been blocked. Please contact support.",
+                                "Your account has been temporarily suspended",
                                 Toast.LENGTH_LONG
                             ).show()
                             Log.w(TAG, "Blocked user attempted to login: ${currentUser.uid}")

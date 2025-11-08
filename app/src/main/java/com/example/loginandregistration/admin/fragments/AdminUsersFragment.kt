@@ -176,18 +176,18 @@ class AdminUsersFragment : Fragment() {
         
         chipModeratorRole.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                roleFilters.add(UserRole.MODERATOR)
+                roleFilters.add(UserRole.SECURITY)
             } else {
-                roleFilters.remove(UserRole.MODERATOR)
+                roleFilters.remove(UserRole.SECURITY)
             }
             applyFilters()
         }
         
         chipUserRole.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                roleFilters.add(UserRole.USER)
+                roleFilters.add(UserRole.STUDENT)
             } else {
-                roleFilters.remove(UserRole.USER)
+                roleFilters.remove(UserRole.STUDENT)
             }
             applyFilters()
         }
