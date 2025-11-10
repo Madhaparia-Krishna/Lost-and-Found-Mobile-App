@@ -261,8 +261,8 @@ class RegistrationProfileIntegrationTest {
     fun testCompleteProfileUpdateFlow() {
         // Original user data
         val originalUser = User(
-            userId = "test123",
-            name = "John Doe",
+            uid = "test123",
+            displayName = "John Doe",
             email = "john@example.com",
             phone = "1234567890",
             gender = "Male",
@@ -283,17 +283,17 @@ class RegistrationProfileIntegrationTest {
         
         // Create updated user
         val updatedUser = originalUser.copy(
-            name = newName,
+            displayName = newName,
             phone = newPhone,
             gender = newGender,
             updatedAt = com.google.firebase.Timestamp.now()
         )
         
         // Verify updates
-        assertEquals(newName, updatedUser.name)
+        assertEquals(newName, updatedUser.displayName)
         assertEquals(newPhone, updatedUser.phone)
         assertEquals(newGender, updatedUser.gender)
         assertEquals("Email should remain unchanged", originalUser.email, updatedUser.email)
-        assertEquals("User ID should remain unchanged", originalUser.userId, updatedUser.userId)
+        assertEquals("User ID should remain unchanged", originalUser.uid, updatedUser.uid)
     }
 }

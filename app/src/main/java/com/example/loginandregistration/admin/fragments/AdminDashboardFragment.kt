@@ -32,8 +32,8 @@ class AdminDashboardFragment : Fragment() {
     private lateinit var tvActiveUsers: TextView
     private lateinit var tvBlockedUsers: TextView
     private lateinit var tvAdminCount: TextView
-    private lateinit var tvModeratorCount: TextView
-    private lateinit var tvUserCount: TextView
+    private lateinit var tvSecurityCount: TextView
+    private lateinit var tvStudentCount: TextView
     private lateinit var rvTopContributors: RecyclerView
     
     private lateinit var topContributorsAdapter: com.example.loginandregistration.admin.adapters.TopContributorsAdapter
@@ -85,8 +85,8 @@ class AdminDashboardFragment : Fragment() {
         tvActiveUsers = view.findViewById(R.id.tvActiveUsers)
         tvBlockedUsers = view.findViewById(R.id.tvBlockedUsers)
         tvAdminCount = view.findViewById(R.id.tvAdminCount)
-        tvModeratorCount = view.findViewById(R.id.tvModeratorCount)
-        tvUserCount = view.findViewById(R.id.tvUserCount)
+        tvSecurityCount = view.findViewById(R.id.tvSecurityCount)
+        tvStudentCount = view.findViewById(R.id.tvStudentCount)
         rvTopContributors = view.findViewById(R.id.rvTopContributors)
     }
     
@@ -187,10 +187,10 @@ class AdminDashboardFragment : Fragment() {
         tvActiveUsers.text = analytics.activeUsers.toString()
         tvBlockedUsers.text = analytics.blockedUsers.toString()
         
-        // Update users by role
+        // Update users by role - Requirement 10.4
         tvAdminCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.ADMIN] ?: 0).toString()
-        tvModeratorCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.MODERATOR] ?: 0).toString()
-        tvUserCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.USER] ?: 0).toString()
+        tvSecurityCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.SECURITY] ?: 0).toString()
+        tvStudentCount.text = (analytics.usersByRole[com.example.loginandregistration.admin.models.UserRole.STUDENT] ?: 0).toString()
         
         // Update top contributors (show top 5)
         topContributorsAdapter.submitList(analytics.topContributors.take(5))

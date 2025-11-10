@@ -219,7 +219,7 @@ object NotificationTriggers {
                     title = "Security Alert: $title",
                     body = message,
                     type = NotificationType.SECURITY_ALERT,
-                    targetRoles = listOf(UserRole.ADMIN, UserRole.MODERATOR),
+                    targetRoles = listOf(UserRole.ADMIN, UserRole.SECURITY),
                     metadata = mapOf(
                         "severity" to severity,
                         "timestamp" to System.currentTimeMillis().toString()

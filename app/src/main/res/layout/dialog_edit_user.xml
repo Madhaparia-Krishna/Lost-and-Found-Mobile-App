@@ -50,24 +50,10 @@
         android:layout_marginBottom="16dp">
 
         <RadioButton
-            android:id="@+id/rbUser"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="User"
-            android:padding="8dp" />
-
-        <RadioButton
             android:id="@+id/rbStudent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Student"
-            android:padding="8dp" />
-
-        <RadioButton
-            android:id="@+id/rbModerator"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Moderator"
             android:padding="8dp" />
 
         <RadioButton

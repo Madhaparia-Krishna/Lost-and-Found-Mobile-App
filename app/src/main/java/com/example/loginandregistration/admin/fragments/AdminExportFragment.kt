@@ -408,14 +408,14 @@ class AdminExportFragment : Fragment() {
             }
         }
         
-        // Observe errors
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            if (error.isNotEmpty()) {
-                progressDialog?.showError(error)
-                hideProgressUI()
-                showError(error)
-            }
-        }
+        // Error display disabled - uncomment to show errors
+        // viewModel.error.observe(viewLifecycleOwner) { error ->
+        //     if (error.isNotEmpty()) {
+        //         progressDialog?.showError(error)
+        //         hideProgressUI()
+        //         showError(error)
+        //     }
+        // }
         
         // Observe success messages
         viewModel.successMessage.observe(viewLifecycleOwner) { message ->

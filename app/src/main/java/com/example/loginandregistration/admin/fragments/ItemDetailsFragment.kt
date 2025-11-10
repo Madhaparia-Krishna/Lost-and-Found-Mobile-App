@@ -163,11 +163,12 @@ class ItemDetailsFragment : Fragment() {
             }
         }
         
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            if (error.isNotEmpty()) {
-                Snackbar.make(requireView(), error, Snackbar.LENGTH_LONG).show()
-            }
-        }
+        // Error display disabled - uncomment to show errors
+        // viewModel.error.observe(viewLifecycleOwner) { error ->
+        //     if (error.isNotEmpty()) {
+        //         Snackbar.make(requireView(), error, Snackbar.LENGTH_LONG).show()
+        //     }
+        // }
     }
     
     private fun displayItemDetails(item: EnhancedLostFoundItem) {

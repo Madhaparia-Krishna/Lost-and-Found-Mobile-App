@@ -38,7 +38,6 @@ class AdminUsersFragment : Fragment() {
     private lateinit var chipActiveUsers: Chip
     private lateinit var chipBlockedUsers: Chip
     private lateinit var chipAdminRole: Chip
-    private lateinit var chipModeratorRole: Chip
     private lateinit var chipUserRole: Chip
     private lateinit var emptyStateView: LinearLayout
     private lateinit var tvEmptyStateTitle: TextView
@@ -90,7 +89,6 @@ class AdminUsersFragment : Fragment() {
         chipActiveUsers = view.findViewById(R.id.chipActiveUsers)
         chipBlockedUsers = view.findViewById(R.id.chipBlockedUsers)
         chipAdminRole = view.findViewById(R.id.chipAdminRole)
-        chipModeratorRole = view.findViewById(R.id.chipModeratorRole)
         chipUserRole = view.findViewById(R.id.chipUserRole)
         emptyStateView = view.findViewById(R.id.emptyStateView)
         tvEmptyStateTitle = view.findViewById(R.id.tvEmptyStateTitle)
@@ -174,20 +172,11 @@ class AdminUsersFragment : Fragment() {
             applyFilters()
         }
         
-        chipModeratorRole.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                roleFilters.add(UserRole.MODERATOR)
-            } else {
-                roleFilters.remove(UserRole.MODERATOR)
-            }
-            applyFilters()
-        }
-        
         chipUserRole.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                roleFilters.add(UserRole.USER)
+                roleFilters.add(UserRole.STUDENT)
             } else {
-                roleFilters.remove(UserRole.USER)
+                roleFilters.remove(UserRole.STUDENT)
             }
             applyFilters()
         }
@@ -291,20 +280,7 @@ class AdminUsersFragment : Fragment() {
         
         viewModel.error.observe(viewLifecycleOwner) { error ->
             error?.let {
-                Log.e(TAG, "observeViewModel: Error received: $it")
-                swipeRefresh.isRefreshing = false
-                
-                // Show empty state with error
-                showEmptyState(isError = true, errorMessage = it)
-                
-                // Show Snackbar with retry action
-                view?.let { v ->
-                    Snackbar.make(v, it, Snackbar.LENGTH_LONG)
-                        .setAction(getString(R.string.retry)) {
-                            viewModel.loadAllUsers()
-                        }
-                        .show()
-                }
+                // Show error message
             }
         }
     }

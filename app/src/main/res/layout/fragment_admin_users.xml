@@ -72,13 +72,6 @@
                 android:text="Admin" />
 
             <com.google.android.material.chip.Chip
-                android:id="@+id/chipModeratorRole"
-                style="@style/Widget.Material3.Chip.Filter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Moderator" />
-
-            <com.google.android.material.chip.Chip
                 android:id="@+id/chipUserRole"
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"

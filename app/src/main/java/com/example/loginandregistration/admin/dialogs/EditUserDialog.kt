@@ -14,10 +14,8 @@ import com.example.loginandregistration.admin.models.AdminUser
 import com.example.loginandregistration.admin.models.UserRole
 import com.example.loginandregistration.admin.viewmodel.AdminDashboardViewModel
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import com.example.loginandregistration.utils.EditTextUtils
 
 /**
  * Dialog for editing user details
@@ -30,9 +28,7 @@ class EditUserDialog : DialogFragment() {
     private lateinit var tilDisplayName: TextInputLayout
     private lateinit var etDisplayName: TextInputEditText
     private lateinit var rgRole: RadioGroup
-    private lateinit var rbUser: RadioButton
     private lateinit var rbStudent: RadioButton
-    private lateinit var rbModerator: RadioButton
     private lateinit var rbSecurity: RadioButton
     private lateinit var rbAdmin: RadioButton
     private lateinit var btnCancel: MaterialButton
@@ -74,6 +70,21 @@ class EditUserDialog : DialogFragment() {
         initViews(view)
         loadUserData()
         setupClickListeners()
+        observeViewModel()
+    }
+    
+    private fun observeViewModel() {
+        viewModel.successMessage.observe(viewLifecycleOwner) { message ->
+            message?.let {
+                android.widget.Toast.makeText(requireContext(), it, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+        
+        viewModel.error.observe(viewLifecycleOwner) { error ->
+            error?.let {
+                android.widget.Toast.makeText(requireContext(), "Error: $it", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
     
     override fun onStart() {
@@ -89,9 +100,7 @@ class EditUserDialog : DialogFragment() {
         tilDisplayName = view.findViewById(R.id.tilDisplayName)
         etDisplayName = view.findViewById(R.id.etDisplayName)
         rgRole = view.findViewById(R.id.rgRole)
-        rbUser = view.findViewById(R.id.rbUser)
         rbStudent = view.findViewById(R.id.rbStudent)
-        rbModerator = view.findViewById(R.id.rbModerator)
         rbSecurity = view.findViewById(R.id.rbSecurity)
         rbAdmin = view.findViewById(R.id.rbAdmin)
         btnCancel = view.findViewById(R.id.btnCancel)
@@ -124,16 +133,19 @@ class EditUserDialog : DialogFragment() {
                 itemsClaimed = itemsClaimed
             )
             
-            // Populate fields
-            EditTextUtils.safeSetText(etDisplayName, displayName)
+            // Populate fields using post to avoid InputConnection issues
+            etDisplayName.post {
+                etDisplayName.setText(displayName)
+                etDisplayName.setSelection(displayName.length)
+            }
             
-            // Select appropriate role radio button
-            when (role) {
-                UserRole.USER -> rbUser.isChecked = true
-                UserRole.STUDENT -> rbStudent.isChecked = true
-                UserRole.MODERATOR -> rbModerator.isChecked = true
-                UserRole.SECURITY -> rbSecurity.isChecked = true
-                UserRole.ADMIN -> rbAdmin.isChecked = true
+            // Select appropriate role radio button - Requirement 10.3
+            rgRole.post {
+                when (role) {
+                    UserRole.STUDENT -> rbStudent.isChecked = true
+                    UserRole.SECURITY -> rbSecurity.isChecked = true
+                    UserRole.ADMIN -> rbAdmin.isChecked = true
+                }
             }
         }
     }
@@ -149,7 +161,10 @@ class EditUserDialog : DialogFragment() {
     }
     
     private fun saveUserDetails() {
-        val user = currentUser ?: return
+        val user = currentUser ?: run {
+            android.widget.Toast.makeText(requireContext(), "Error: User data not loaded", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
         
         // Get updated values
         val newDisplayName = etDisplayName.text.toString().trim()
@@ -162,21 +177,17 @@ class EditUserDialog : DialogFragment() {
         
         tilDisplayName.error = null
         
-        // Get selected role
+        // Get selected role - Requirement 10.3
         val newRole = when (rgRole.checkedRadioButtonId) {
-            R.id.rbUser -> UserRole.USER
             R.id.rbStudent -> UserRole.STUDENT
-            R.id.rbModerator -> UserRole.MODERATOR
             R.id.rbSecurity -> UserRole.SECURITY
             R.id.rbAdmin -> UserRole.ADMIN
-            else -> UserRole.USER
+            else -> UserRole.STUDENT
         }
         
         // Check if anything changed
         if (newDisplayName == user.displayName && newRole == user.role) {
-            view?.let { v ->
-                Snackbar.make(v, "No changes to save", Snackbar.LENGTH_SHORT).show()
-            }
+            android.widget.Toast.makeText(requireContext(), "No changes to save", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -191,8 +202,13 @@ class EditUserDialog : DialogFragment() {
             updates["role"] = newRole.name
         }
         
+        android.util.Log.d("EditUserDialog", "Saving user ${user.uid} with updates: $updates")
+        
         // Update user details via ViewModel
         viewModel.updateUserDetailsEnhanced(user.uid, updates)
+        
+        // Show progress
+        android.widget.Toast.makeText(requireContext(), "Saving changes...", android.widget.Toast.LENGTH_SHORT).show()
         
         // Dismiss dialog
         dismiss()

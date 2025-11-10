@@ -103,7 +103,7 @@ class Register : AppCompatActivity() {
             email = email,
             phone = phone,
             photoUrl = "",                   // Empty initially
-            role = "USER",                   // Default role
+            role = "STUDENT",                // Default role - Requirement 10.2
             isBlocked = false,               // Not blocked by default
             gender = "",
             fcmToken = "",

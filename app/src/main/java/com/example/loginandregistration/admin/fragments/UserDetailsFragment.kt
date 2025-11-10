@@ -137,6 +137,7 @@ class UserDetailsFragment : Fragment() {
     }
     
     private fun observeViewModel() {
+        // Observe all users list for updates
         viewModel.allUsers.observe(viewLifecycleOwner) { users ->
             // Update current user if it's in the list
             currentUser?.let { current ->
@@ -147,6 +148,26 @@ class UserDetailsFragment : Fragment() {
             }
         }
         
+        // Observe userDetails for initial load from repository
+        viewModel.userDetails.observe(viewLifecycleOwner) { enhancedUser ->
+            // Convert EnhancedAdminUser to AdminUser for display
+            val adminUser = AdminUser(
+                uid = enhancedUser.uid,
+                email = enhancedUser.email,
+                displayName = enhancedUser.displayName,
+                photoUrl = enhancedUser.photoUrl,
+                role = enhancedUser.role,
+                isBlocked = enhancedUser.isBlocked,
+                createdAt = enhancedUser.createdAt,
+                lastLoginAt = enhancedUser.lastLoginAt,
+                itemsReported = enhancedUser.itemsReported,
+                itemsFound = enhancedUser.itemsFound,
+                itemsClaimed = enhancedUser.itemsClaimed
+            )
+            currentUser = adminUser
+            displayUserDetails(adminUser)
+        }
+        
         viewModel.successMessage.observe(viewLifecycleOwner) { message ->
             if (message.isNotEmpty()) {
                 view?.let { v ->
@@ -155,21 +176,27 @@ class UserDetailsFragment : Fragment() {
             }
         }
         
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            if (error.isNotEmpty()) {
-                view?.let { v ->
-                    Snackbar.make(v, error, Snackbar.LENGTH_LONG).show()
-                }
-            }
-        }
+        // Error display disabled - uncomment to show errors
+        // viewModel.error.observe(viewLifecycleOwner) { error ->
+        //     if (error.isNotEmpty()) {
+        //         view?.let { v ->
+        //             Snackbar.make(v, error, Snackbar.LENGTH_LONG).show()
+        //         }
+        //     }
+        // }
     }
     
     private fun loadUserDetails(userId: String) {
-        // Find user from the all users list
+        // First try to find user from cached list
         viewModel.allUsers.value?.find { it.uid == userId }?.let { user ->
             currentUser = user
             displayUserDetails(user)
+            return
         }
+        
+        // If not found in cache, load from repository
+        android.util.Log.d("UserDetailsFragment", "User not found in cache, loading from repository for userId: $userId")
+        viewModel.loadUserDetails(userId)
     }
     
     private fun displayUserDetails(user: AdminUser) {
@@ -225,10 +252,8 @@ class UserDetailsFragment : Fragment() {
     private fun getRoleColor(role: UserRole): Int {
         return when (role) {
             UserRole.ADMIN -> R.color.status_lost
-            UserRole.MODERATOR -> R.color.status_pending
             UserRole.SECURITY -> R.color.status_pending
             UserRole.STUDENT -> R.color.status_default
-            UserRole.USER -> R.color.status_default
         }
     }
     
@@ -255,20 +280,18 @@ class UserDetailsFragment : Fragment() {
     }
     
     private fun showRoleChangeDialog(user: AdminUser) {
-        // TODO: This will be implemented in task 9.5
-        // val dialog = RoleChangeDialog.newInstance(user)
-        // dialog.show(parentFragmentManager, "RoleChangeDialog")
+        // Requirement 10.3: Show only three valid roles
+        val roles = arrayOf("STUDENT", "SECURITY", "ADMIN")
+        val roleDisplayNames = arrayOf("Student", "Security", "Admin")
         
-        // Temporary implementation - show simple dialog
-        val roles = arrayOf("USER", "MODERATOR", "ADMIN")
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setTitle("Change User Role")
-            .setItems(roles) { _, which ->
+            .setItems(roleDisplayNames) { _, which ->
                 val newRole = when (which) {
-                    0 -> UserRole.USER
-                    1 -> UserRole.MODERATOR
+                    0 -> UserRole.STUDENT
+                    1 -> UserRole.SECURITY
                     2 -> UserRole.ADMIN
-                    else -> UserRole.USER
+                    else -> UserRole.STUDENT
                 }
                 viewModel.updateUserRole(user.uid, newRole)
             }

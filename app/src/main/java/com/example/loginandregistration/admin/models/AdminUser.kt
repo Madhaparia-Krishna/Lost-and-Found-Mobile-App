@@ -9,7 +9,7 @@ data class AdminUser(
     val email: String = "",
     val displayName: String = "",
     val photoUrl: String = "",
-    val role: UserRole = UserRole.USER,
+    val role: UserRole = UserRole.STUDENT,
     val isBlocked: Boolean = false,
     val createdAt: Timestamp = Timestamp.now(),
     val lastLoginAt: Timestamp? = null,
@@ -20,26 +20,26 @@ data class AdminUser(
 
 /**
  * User role enum for role-based access and notifications
- * Requirements: 6.2, 3.1, 3.2, 3.3, 3.4, 3.5
+ * Requirements: 10.1, 10.2, 10.3, 10.4, 10.5
+ * 
+ * Simplified to three roles: STUDENT, SECURITY, and ADMIN
  * 
  * Firestore Deserialization Notes:
  * - Firestore automatically deserializes enum values by matching the string in the database
  *   to the enum constant name (case-sensitive)
- * - This enum includes SECURITY and STUDENT constants to support all user roles
- * - The fromString() method provides case-insensitive parsing with fallback to USER
+ * - The fromString() method provides case-insensitive parsing with fallback to STUDENT
  * - For automatic Firestore deserialization to work, database values should be stored
- *   in uppercase (SECURITY, STUDENT, etc.) which is done automatically via role.name
- * - If legacy data exists with mixed case (e.g., "Security", "Student"), it should be
- *   migrated to uppercase, or manual parsing with fromString() should be used
+ *   in uppercase (STUDENT, SECURITY, ADMIN) which is done automatically via role.name
+ * - Legacy data with old roles (USER, MODERATOR) will be mapped to STUDENT
  */
-enum class UserRole {
-    USER, STUDENT, MODERATOR, SECURITY, ADMIN;
+enum class UserRole(val value: String) {
+    STUDENT("STUDENT"),
+    SECURITY("SECURITY"),
+    ADMIN("ADMIN");
     
     fun getDisplayName(): String {
         return when (this) {
-            USER -> "User"
             STUDENT -> "Student"
-            MODERATOR -> "Moderator"
             SECURITY -> "Security"
             ADMIN -> "Admin"
         }
@@ -47,17 +47,25 @@ enum class UserRole {
     
     companion object {
         /**
-         * Safely parse role from string with case-insensitive matching and fallback to USER
+         * Safely parse role from string with case-insensitive matching and fallback to STUDENT
          * Prevents crashes from unknown role values in database
-         * Handles "Security", "Student", "SECURITY", "STUDENT", etc.
-         * Requirements: 3.1, 3.2, 3.3, 3.4
+         * Maps legacy roles (USER, MODERATOR) to STUDENT
+         * Requirements: 10.1, 10.2, 10.5
          */
         fun fromString(value: String): UserRole {
-            return try {
-                valueOf(value.uppercase())
-            } catch (e: IllegalArgumentException) {
-                android.util.Log.w("UserRole", "Unknown role: $value, defaulting to USER")
-                USER
+            return when (value.uppercase()) {
+                "STUDENT" -> STUDENT
+                "SECURITY" -> SECURITY
+                "ADMIN" -> ADMIN
+                // Map legacy roles to STUDENT
+                "USER", "MODERATOR" -> {
+                    android.util.Log.i("UserRole", "Mapping legacy role '$value' to STUDENT")
+                    STUDENT
+                }
+                else -> {
+                    android.util.Log.w("UserRole", "Unknown role: $value, defaulting to STUDENT")
+                    STUDENT
+                }
             }
         }
     }

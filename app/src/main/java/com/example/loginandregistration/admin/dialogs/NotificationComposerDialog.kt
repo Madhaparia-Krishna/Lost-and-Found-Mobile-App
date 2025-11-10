@@ -379,7 +379,7 @@ class NotificationComposerDialog : DialogFragment() {
                 targetUsers.add("ALL")
             }
             R.id.rbRoleBased -> {
-                if (chipUser.isChecked) targetRoles.add(UserRole.USER)
+                if (chipUser.isChecked) targetRoles.add(UserRole.STUDENT)
                 if (chipAdmin.isChecked) targetRoles.add(UserRole.ADMIN)
             }
             R.id.rbIndividual -> {

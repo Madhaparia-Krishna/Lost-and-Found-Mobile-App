@@ -44,9 +44,17 @@ class ReportTypeDialog : DialogFragment() {
             dismiss()
         }
 
-        return MaterialAlertDialogBuilder(requireContext())
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setView(view)
             .create()
+        
+        // Ensure dialog shows full content without being cut off
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        
+        return dialog
     }
 
     override fun onCreateView(
@@ -56,5 +64,14 @@ class ReportTypeDialog : DialogFragment() {
     ): View? {
         // Return null to use the dialog created in onCreateDialog
         return null
+    }
+    
+    override fun onStart() {
+        super.onStart()
+        // Ensure dialog window is properly sized to show all content
+        dialog?.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
     }
 }

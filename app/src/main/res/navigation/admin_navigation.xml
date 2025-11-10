@@ -15,13 +15,21 @@
         android:id="@+id/navigation_items"
         android:name="com.example.loginandregistration.admin.fragments.AdminItemsFragment"
         android:label="Items"
-        tools:layout="@layout/fragment_admin_items" />
+        tools:layout="@layout/fragment_admin_items">
+        <action
+            android:id="@+id/action_items_to_itemDetails"
+            app:destination="@id/itemDetailsFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_users"
         android:name="com.example.loginandregistration.admin.fragments.AdminUsersFragment"
         android:label="Users"
-        tools:layout="@layout/fragment_admin_users" />
+        tools:layout="@layout/fragment_admin_users">
+        <action
+            android:id="@+id/action_users_to_userDetails"
+            app:destination="@id/userDetailsFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_donations"
@@ -64,6 +72,16 @@
         <argument
             android:name="item_id"
             app:argType="string" />
+        <action
+            android:id="@+id/action_itemDetails_to_items"
+            app:destination="@id/navigation_items"
+            app:popUpTo="@id/navigation_items"
+            app:popUpToInclusive="false" />
+        <action
+            android:id="@+id/action_itemDetails_to_dashboard"
+            app:destination="@id/navigation_dashboard"
+            app:popUpTo="@id/navigation_dashboard"
+            app:popUpToInclusive="false" />
     </fragment>
 
     <fragment
@@ -74,6 +92,16 @@
         <argument
             android:name="user_id"
             app:argType="string" />
+        <action
+            android:id="@+id/action_userDetails_to_users"
+            app:destination="@id/navigation_users"
+            app:popUpTo="@id/navigation_users"
+            app:popUpToInclusive="false" />
+        <action
+            android:id="@+id/action_userDetails_to_dashboard"
+            app:destination="@id/navigation_dashboard"
+            app:popUpTo="@id/navigation_dashboard"
+            app:popUpToInclusive="false" />
     </fragment>
 
 </navigation>

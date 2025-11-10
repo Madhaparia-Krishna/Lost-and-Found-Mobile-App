@@ -13,7 +13,7 @@ data class EnhancedAdminUser(
     val email: String = "",
     val displayName: String = "",
     val photoUrl: String = "",
-    val role: UserRole = UserRole.USER,
+    val role: UserRole = UserRole.STUDENT,
     val isBlocked: Boolean = false,
     val createdAt: Timestamp = Timestamp.now(),
     val lastLoginAt: Timestamp? = null,
@@ -67,17 +67,3 @@ data class EnhancedAdminUser(
         )
     }
 }
-
-/**
- * User analytics data model
- * Requirements: 1.7
- */
-data class UserAnalytics(
-    val totalUsers: Int = 0,
-    val activeUsers: Int = 0,
-    val blockedUsers: Int = 0,
-    val usersByRole: Map<UserRole, Int> = emptyMap(),
-    val newUsersThisMonth: Int = 0,
-    val averageItemsPerUser: Float = 0f,
-    val topContributors: List<EnhancedAdminUser> = emptyList()
-)

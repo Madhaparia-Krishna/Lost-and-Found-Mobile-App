@@ -7,11 +7,17 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.example.loginandregistration.databinding.FragmentProfileBinding
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
@@ -206,6 +212,11 @@ class ProfileFragment : Fragment() {
 
     private fun handleChangePassword() {
         val user = auth.currentUser
+        if (user == null) {
+            Toast.makeText(context, "User not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val newPassword = binding.etNewPassword.text.toString().trim()
         val confirmPassword = binding.etConfirmPassword.text.toString().trim()
 
@@ -229,7 +240,13 @@ class ProfileFragment : Fragment() {
         showLoading()
 
         // --- Update Password in Firebase ---
-        user?.updatePassword(newPassword)?.addOnCompleteListener { task ->
+        updatePasswordWithRetry(newPassword)
+    }
+
+    private fun updatePasswordWithRetry(newPassword: String) {
+        val user = auth.currentUser ?: return
+
+        user.updatePassword(newPassword).addOnCompleteListener { task ->
             hideLoading()
             
             if (task.isSuccessful) {
@@ -239,10 +256,139 @@ class ProfileFragment : Fragment() {
                 binding.etNewPassword.text?.clear()
                 binding.etConfirmPassword.text?.clear()
             } else {
-                Log.e("ProfileFragment", "Password update failed", task.exception)
-                // Firebase may require the user to have recently logged in.
-                // This is a security measure.
-                Toast.makeText(context, "Failed to update password. Please try logging out and in again.", Toast.LENGTH_LONG).show()
+                // Handle specific error cases
+                val exception = task.exception
+                when (exception) {
+                    is FirebaseAuthRecentLoginRequiredException -> {
+                        // User needs to re-authenticate
+                        Log.w("ProfileFragment", "Recent login required for password update")
+                        showReauthenticationDialog(newPassword)
+                    }
+                    is FirebaseAuthWeakPasswordException -> {
+                        Log.e("ProfileFragment", "Weak password", exception)
+                        Toast.makeText(
+                            context,
+                            "Password is too weak. Please use a stronger password with a mix of letters, numbers, and symbols.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    is FirebaseAuthInvalidCredentialsException -> {
+                        Log.e("ProfileFragment", "Invalid credentials", exception)
+                        Toast.makeText(
+                            context,
+                            "Invalid password format. Please try a different password.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    else -> {
+                        Log.e("ProfileFragment", "Password update failed", exception)
+                        Toast.makeText(
+                            context,
+                            "Failed to update password: ${exception?.message ?: "Unknown error"}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showReauthenticationDialog(newPassword: String) {
+        val user = auth.currentUser ?: return
+        val email = user.email
+
+        if (email.isNullOrEmpty()) {
+            Toast.makeText(
+                context,
+                "Unable to re-authenticate. Please log out and log in again.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        // Create dialog with password input
+        val dialogView = LayoutInflater.from(requireContext()).inflate(
+            android.R.layout.simple_list_item_1, null
+        )
+        
+        val passwordInput = EditText(requireContext()).apply {
+            hint = "Enter your current password"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setPadding(50, 40, 50, 40)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Re-authentication Required")
+            .setMessage("For security reasons, please enter your current password to continue.")
+            .setView(passwordInput)
+            .setPositiveButton("Confirm") { dialog, _ ->
+                val currentPassword = passwordInput.text.toString().trim()
+                if (currentPassword.isEmpty()) {
+                    Toast.makeText(context, "Please enter your current password", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                    return@setPositiveButton
+                }
+                
+                // Re-authenticate and retry password update
+                reauthenticateAndUpdatePassword(email, currentPassword, newPassword)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun reauthenticateAndUpdatePassword(email: String, currentPassword: String, newPassword: String) {
+        val user = auth.currentUser ?: return
+
+        showLoading()
+
+        // Create credential with current password
+        val credential = EmailAuthProvider.getCredential(email, currentPassword)
+
+        // Re-authenticate user
+        user.reauthenticate(credential).addOnCompleteListener { reauthTask ->
+            if (reauthTask.isSuccessful) {
+                Log.d("ProfileFragment", "Re-authentication successful")
+                // Now retry password update
+                user.updatePassword(newPassword).addOnCompleteListener { updateTask ->
+                    hideLoading()
+                    
+                    if (updateTask.isSuccessful) {
+                        Log.d("ProfileFragment", "Password updated after re-authentication")
+                        Toast.makeText(
+                            context,
+                            "Password updated successfully.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        // Clear the fields after success
+                        binding.etNewPassword.text?.clear()
+                        binding.etConfirmPassword.text?.clear()
+                    } else {
+                        Log.e("ProfileFragment", "Password update failed after re-auth", updateTask.exception)
+                        val exception = updateTask.exception
+                        val errorMessage = when (exception) {
+                            is FirebaseAuthWeakPasswordException -> 
+                                "Password is too weak. Please use a stronger password."
+                            else -> 
+                                "Failed to update password: ${exception?.message ?: "Unknown error"}"
+                        }
+                        Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+                    }
+                }
+            } else {
+                hideLoading()
+                Log.e("ProfileFragment", "Re-authentication failed", reauthTask.exception)
+                val exception = reauthTask.exception
+                val errorMessage = when (exception) {
+                    is FirebaseAuthInvalidCredentialsException -> 
+                        "Incorrect current password. Please try again."
+                    else -> 
+                        "Re-authentication failed: ${exception?.message ?: "Unknown error"}"
+                }
+                Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
             }
         }
     }
