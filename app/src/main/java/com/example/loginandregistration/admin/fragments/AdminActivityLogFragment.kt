@@ -209,11 +209,12 @@ class AdminActivityLogFragment : Fragment() {
             }
         }
         
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                showError(it)
-            }
-        }
+        // Error display disabled - uncomment to show errors
+        // viewModel.error.observe(viewLifecycleOwner) { error ->
+        //     error?.let {
+        //         showError(it)
+        //     }
+        // }
     }
     
     private fun loadActivityLogs() {

@@ -3,7 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:minHeight="200dp">
 
     <TextView
         android:layout_width="match_parent"
@@ -42,11 +43,12 @@
         android:layout_height="56dp"
         android:background="@drawable/button_secondary_background"
         android:text="@string/report_found_item"
-        android:textColor="@color/primary_purple"
+        android:textColor="@color/white"
         android:textSize="16sp"
         android:textStyle="bold"
-        android:drawableStart="@drawable/ic_check_purple"
+        android:drawableStart="@drawable/ic_add_white"
         android:drawablePadding="8dp"
-        android:gravity="center" />
+        android:gravity="center"
+        android:layout_marginBottom="8dp" />
 
 </LinearLayout>

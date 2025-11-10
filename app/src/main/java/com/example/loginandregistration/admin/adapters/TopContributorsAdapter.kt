@@ -10,13 +10,13 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.loginandregistration.R
-import com.example.loginandregistration.admin.models.EnhancedAdminUser
+import com.example.loginandregistration.admin.models.TopContributor
 
 /**
  * Adapter for displaying top contributors in user analytics
  * Requirements: 1.7
  */
-class TopContributorsAdapter : ListAdapter<EnhancedAdminUser, TopContributorsAdapter.ContributorViewHolder>(ContributorDiffCallback()) {
+class TopContributorsAdapter : ListAdapter<TopContributor, TopContributorsAdapter.ContributorViewHolder>(ContributorDiffCallback()) {
     
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContributorViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -34,33 +34,23 @@ class TopContributorsAdapter : ListAdapter<EnhancedAdminUser, TopContributorsAda
         private val tvName: TextView = itemView.findViewById(R.id.tvName)
         private val tvContributions: TextView = itemView.findViewById(R.id.tvContributions)
         
-        fun bind(user: EnhancedAdminUser, rank: Int) {
+        fun bind(contributor: TopContributor, rank: Int) {
             tvRank.text = "#$rank"
-            tvName.text = user.displayName.ifEmpty { "Unknown User" }
+            tvName.text = contributor.userName.ifEmpty { "Unknown User" }
             
-            val totalContributions = user.itemsReported + user.itemsFound + user.itemsClaimed
-            tvContributions.text = "$totalContributions items"
+            tvContributions.text = "${contributor.totalContributions} items"
             
-            // Load avatar
-            if (user.photoUrl.isNotEmpty()) {
-                Glide.with(itemView.context)
-                    .load(user.photoUrl)
-                    .placeholder(R.drawable.ic_person_placeholder)
-                    .error(R.drawable.ic_person_placeholder)
-                    .circleCrop()
-                    .into(ivAvatar)
-            } else {
-                ivAvatar.setImageResource(R.drawable.ic_person_placeholder)
-            }
+            // Load avatar - TopContributor doesn't have photoUrl, use placeholder
+            ivAvatar.setImageResource(R.drawable.ic_person_placeholder)
         }
     }
     
-    class ContributorDiffCallback : DiffUtil.ItemCallback<EnhancedAdminUser>() {
-        override fun areItemsTheSame(oldItem: EnhancedAdminUser, newItem: EnhancedAdminUser): Boolean {
-            return oldItem.uid == newItem.uid
+    class ContributorDiffCallback : DiffUtil.ItemCallback<TopContributor>() {
+        override fun areItemsTheSame(oldItem: TopContributor, newItem: TopContributor): Boolean {
+            return oldItem.userId == newItem.userId
         }
         
-        override fun areContentsTheSame(oldItem: EnhancedAdminUser, newItem: EnhancedAdminUser): Boolean {
+        override fun areContentsTheSame(oldItem: TopContributor, newItem: TopContributor): Boolean {
             return oldItem == newItem
         }
     }

@@ -65,3 +65,28 @@ data class MonthlyTrend(
     val totalItems: Int = 0,
     val resolvedItems: Int = 0
 )
+
+/**
+ * User analytics data model
+ * Requirements: 1.7
+ */
+data class UserAnalytics(
+    val totalUsers: Int = 0,
+    val activeUsers: Int = 0,
+    val blockedUsers: Int = 0,
+    val usersByRole: Map<UserRole, Int> = emptyMap(),
+    val topContributors: List<TopContributor> = emptyList()
+)
+
+/**
+ * Top contributor model
+ * Requirements: 1.7
+ */
+data class TopContributor(
+    val userId: String = "",
+    val userName: String = "",
+    val userEmail: String = "",
+    val itemsReported: Int = 0,
+    val itemsFound: Int = 0,
+    val totalContributions: Int = 0
+)

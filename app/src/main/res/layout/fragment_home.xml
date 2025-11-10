@@ -87,7 +87,7 @@
                 android:gravity="center"
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
-                android:text="All (6)"
+                android:text="All (0)"
                 android:textColor="@color/white"
                 android:textSize="14sp" />
 
@@ -100,7 +100,7 @@
                 android:gravity="center"
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
-                android:text="Lost (2)"
+                android:text="Lost (0)"
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
@@ -113,7 +113,7 @@
                 android:gravity="center"
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
-                android:text="Found (3)"
+                android:text="Found (0)"
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
@@ -138,6 +138,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/tv_items_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/items_count_background"
@@ -145,7 +146,7 @@
                 android:paddingTop="4dp"
                 android:paddingEnd="12dp"
                 android:paddingBottom="4dp"
-                android:text="6 items"
+                android:text="0 items"
                 android:textColor="@color/primary_purple"
                 android:textSize="12sp" />
 
@@ -194,10 +195,16 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="72dp"
         android:contentDescription="@string/report_item"
         app:srcCompat="@drawable/ic_add_white"
         app:backgroundTint="@color/primary_purple"
-        app:tint="@color/white" />
+        app:tint="@color/white"
+        app:elevation="6dp"
+        app:borderWidth="0dp"
+        app:fabSize="normal"
+        app:maxImageSize="24dp"
+        app:useCompatPadding="false" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

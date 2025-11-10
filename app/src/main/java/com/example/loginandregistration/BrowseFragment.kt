@@ -1,6 +1,7 @@
 package com.example.loginandregistration
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -87,12 +88,18 @@ class BrowseFragment : Fragment() {
     private fun setupSearchView() {
         // Implement search filtering with real-time updates
         // Requirements: 7.2, 7.3, 7.4, 7.5
+        
+        // Set up the SearchView to be always expanded
+        searchView.isIconified = false
+        searchView.clearFocus() // Don't auto-focus on creation
+        
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 // Apply search when user submits
                 val searchQuery = query ?: ""
                 currentSearchQuery = searchQuery
                 applySearchToCurrentTab(searchQuery)
+                searchView.clearFocus() // Hide keyboard after submit
                 return true
             }
             
@@ -120,12 +127,31 @@ class BrowseFragment : Fragment() {
      */
     private fun applySearchToCurrentTab(query: String) {
         val currentPosition = viewPager.currentItem
-        // ViewPager2 uses a specific tag format: f{containerId}{position}
-        val fragmentTag = "f${viewPager.id}${currentPosition}"
-        val fragment = childFragmentManager.findFragmentByTag(fragmentTag)
+        
+        // Try multiple methods to find the fragment
+        // Method 1: ViewPager2 uses a specific tag format: f{containerId}{position}
+        var fragment = childFragmentManager.findFragmentByTag("f${viewPager.id}${currentPosition}")
+        
+        // Method 2: Try to get fragment directly from adapter
+        if (fragment == null) {
+            try {
+                fragment = pagerAdapter.getFragmentAt(currentPosition)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error getting fragment from adapter: ${e.message}")
+            }
+        }
+        
+        // Method 3: Search through all fragments
+        if (fragment == null) {
+            val fragments = childFragmentManager.fragments
+            fragment = fragments.getOrNull(currentPosition)
+        }
         
         if (fragment is SearchableFragment) {
+            Log.d(TAG, "Applying search '$query' to fragment at position $currentPosition")
             fragment.applySearchFilter(query)
+        } else {
+            Log.w(TAG, "Fragment at position $currentPosition is not SearchableFragment or is null")
         }
     }
     

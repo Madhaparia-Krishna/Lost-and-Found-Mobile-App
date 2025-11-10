@@ -36,6 +36,7 @@ class HomeFragment : Fragment(), SearchableFragment {
     private lateinit var tvAllItems: android.widget.TextView
     private lateinit var tvLostItems: android.widget.TextView
     private lateinit var tvFoundItems: android.widget.TextView
+    private lateinit var tvItemsCount: android.widget.TextView
     
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -109,6 +110,7 @@ class HomeFragment : Fragment(), SearchableFragment {
         tvAllItems = view.findViewById(R.id.tv_all_items)
         tvLostItems = view.findViewById(R.id.tv_lost_items)
         tvFoundItems = view.findViewById(R.id.tv_found_items)
+        tvItemsCount = view.findViewById(R.id.tv_items_count)
         
         // Optimize RecyclerView for better performance
         recyclerView.layoutManager = LinearLayoutManager(context)
@@ -123,7 +125,10 @@ class HomeFragment : Fragment(), SearchableFragment {
         
         adapter = ItemsAdapter(
             currentUserId = currentUserId,
-            userEmail = userEmail
+            userEmail = userEmail,
+            onItemClickListener = { item ->
+                showItemDetailsDialog(item)
+            }
         )
         recyclerView.adapter = adapter
         
@@ -147,23 +152,19 @@ class HomeFragment : Fragment(), SearchableFragment {
     }
     
     private fun setupSearchView() {
-        // Navigate to BrowseFragment when search view is clicked/focused
-        // Requirement 2.3: Navigate to BrowseFragment using FragmentManager transaction
-        searchView.setOnQueryTextFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                navigateToBrowseFragment()
-            }
-        }
-        
+        // Set up real-time search on the dashboard
+        // Search filters items by name, category, location, and description
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 val searchQuery = query ?: ""
                 currentSearchQuery = searchQuery
                 applySearchFilter(searchQuery)
+                searchView.clearFocus() // Hide keyboard after submit
                 return true
             }
             
             override fun onQueryTextChange(newText: String?): Boolean {
+                // Apply search in real-time as user types
                 val searchQuery = newText ?: ""
                 currentSearchQuery = searchQuery
                 applySearchFilter(searchQuery)
@@ -176,18 +177,6 @@ class HomeFragment : Fragment(), SearchableFragment {
             applySearchFilter("")
             false
         }
-    }
-    
-    /**
-     * Navigate to BrowseFragment for advanced search
-     * Requirement 2.3: Navigate to BrowseFragment using FragmentManager transaction
-     * Requirement 2.4: Add to back stack for proper navigation flow
-     */
-    private fun navigateToBrowseFragment() {
-        parentFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, BrowseFragment())
-            .addToBackStack(null)
-            .commit()
     }
     
     /**
@@ -262,7 +251,7 @@ class HomeFragment : Fragment(), SearchableFragment {
         val filteredByType = when (currentFilter) {
             FilterType.ALL -> allItems
             FilterType.LOST -> allItems.filter { it.isLost }
-            FilterType.FOUND -> allItems.filter { !it.isLost }
+            FilterType.FOUND -> allItems.filter { !it.isLost && !it.status.equals("Returned", ignoreCase = true) }
         }
         
         // Then apply search filter if there's a search query
@@ -275,7 +264,33 @@ class HomeFragment : Fragment(), SearchableFragment {
         // Update adapter with filtered items
         adapter.submitList(finalItems)
         
+        // Update counts in filter buttons
+        updateFilterCounts()
+        
         Log.d(TAG, "Applied filters - Type: $currentFilter, Search: '$currentSearchQuery', Results: ${finalItems.size}")
+    }
+    
+    /**
+     * Update the count labels on filter buttons with actual item counts
+     */
+    private fun updateFilterCounts() {
+        val allCount = allItems.size
+        val lostCount = allItems.count { it.isLost }
+        val foundCount = allItems.count { !it.isLost && !it.status.equals("Returned", ignoreCase = true) }
+        
+        tvAllItems.text = "All ($allCount)"
+        tvLostItems.text = "Lost ($lostCount)"
+        tvFoundItems.text = "Found ($foundCount)"
+        
+        // Update the items count display based on current filter
+        val displayCount = when (currentFilter) {
+            FilterType.ALL -> allCount
+            FilterType.LOST -> lostCount
+            FilterType.FOUND -> foundCount
+        }
+        tvItemsCount.text = "$displayCount items"
+        
+        Log.d(TAG, "Updated counts - All: $allCount, Lost: $lostCount, Found: $foundCount, Display: $displayCount")
     }
     
     private fun loadRecentItems() {
@@ -457,6 +472,14 @@ class HomeFragment : Fragment(), SearchableFragment {
     }
     
 
+    
+    /**
+     * Show item details dialog when an item is clicked
+     */
+    private fun showItemDetailsDialog(item: LostFoundItem) {
+        val dialog = ItemDetailsDialog.newInstance(item)
+        dialog.show(parentFragmentManager, "ItemDetailsDialog")
+    }
     
     /**
      * Applies search filter to displayed items

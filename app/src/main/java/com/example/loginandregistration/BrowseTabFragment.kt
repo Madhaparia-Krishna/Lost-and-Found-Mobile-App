@@ -110,7 +110,10 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
                 // Handle claim button click - will be implemented in task 6
                 Toast.makeText(requireContext(), "Claim functionality coming soon", Toast.LENGTH_SHORT).show()
             },
-            pendingClaimItemIds = emptySet() // Will be populated when claim system is implemented
+            pendingClaimItemIds = emptySet(), // Will be populated when claim system is implemented
+            onItemClickListener = { item ->
+                showItemDetailsDialog(item)
+            }
         )
         recyclerView.adapter = adapter
         
@@ -170,27 +173,49 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
     
     private fun getItemsFlow() = callbackFlow {
         val currentUser = auth.currentUser
-        val userEmail = currentUser?.email ?: ""
-        // TODO: Fetch user role from Firestore for proper role checking
-        val isSecurity = UserRoleManager.canViewSensitiveInfo("", userEmail)
+        if (currentUser == null) {
+            Log.e(TAG, "User not authenticated")
+            close(Exception("User not authenticated"))
+            return@callbackFlow
+        }
+        
+        val userEmail = currentUser.email ?: ""
+        Log.d(TAG, "Loading items for filter: $filterType, user: $userEmail")
         
         val listener = db.collection("items")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.e(TAG, "Firestore snapshot listener error: ${e.message}", e)
+                    if (e is FirebaseFirestoreException) {
+                        Log.e(TAG, "Firestore error code: ${e.code}")
+                    }
                     close(e)
                     return@addSnapshotListener
                 }
                 
-                val allItems = snapshot?.documents?.mapNotNull { doc ->
+                if (snapshot == null) {
+                    Log.w(TAG, "Snapshot is null")
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                Log.d(TAG, "Received ${snapshot.documents.size} documents from Firestore")
+                
+                val allItems = snapshot.documents.mapNotNull { doc ->
                     try {
-                        doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
+                        val item = doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
+                        if (item != null) {
+                            Log.d(TAG, "Item: ${item.name}, Status: ${item.status}, IsLost: ${item.isLost}")
+                        }
+                        item
                     } catch (e: Exception) {
                         Log.e(TAG, "Error deserializing item ${doc.id}: ${e.message}", e)
                         null
                     }
-                } ?: emptyList()
+                }
+                
+                Log.d(TAG, "Successfully deserialized ${allItems.size} items")
                 
                 // Apply filter based on tab type
                 // Requirements: 5.1, 5.2, 5.3, 6.2, 6.3, 6.4
@@ -201,12 +226,12 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
                         allItems.filter { it.isLost }
                     }
                     TabFilterType.FOUND -> {
-                        // Show all found items regardless of status
-                        allItems.filter { !it.isLost }
+                        // Show found items that are not returned
+                        allItems.filter { !it.isLost && !it.status.equals("Returned", ignoreCase = true) }
                     }
                     TabFilterType.RETURNED -> {
                         // Show returned items (regardless of lost/found type)
-                        allItems.filter { it.status == "Returned" }
+                        allItems.filter { it.status.equals("Returned", ignoreCase = true) }
                     }
                     TabFilterType.ALL -> {
                         // Show all items regardless of status or isLost
@@ -214,10 +239,14 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
                     }
                 }
                 
+                Log.d(TAG, "Filtered to ${filteredItems.size} items for tab $filterType")
                 trySend(filteredItems)
             }
         
-        awaitClose { listener.remove() }
+        awaitClose { 
+            Log.d(TAG, "Closing items flow listener")
+            listener.remove() 
+        }
     }
     
     private suspend fun handleError(e: Throwable) {
@@ -302,6 +331,14 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
         } else {
             hideEmptyState()
         }
+    }
+    
+    /**
+     * Show item details dialog when an item is clicked
+     */
+    private fun showItemDetailsDialog(item: LostFoundItem) {
+        val dialog = ItemDetailsDialog.newInstance(item)
+        dialog.show(parentFragmentManager, "ItemDetailsDialog")
     }
     
     /**

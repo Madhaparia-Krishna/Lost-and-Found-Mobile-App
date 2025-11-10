@@ -14,10 +14,8 @@ import com.example.loginandregistration.admin.models.AdminUser
 import com.example.loginandregistration.admin.models.UserRole
 import com.example.loginandregistration.admin.viewmodel.AdminDashboardViewModel
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import com.example.loginandregistration.utils.EditTextUtils
 
 /**
  * Dialog for editing user details
@@ -72,6 +70,21 @@ class EditUserDialog : DialogFragment() {
         initViews(view)
         loadUserData()
         setupClickListeners()
+        observeViewModel()
+    }
+    
+    private fun observeViewModel() {
+        viewModel.successMessage.observe(viewLifecycleOwner) { message ->
+            message?.let {
+                android.widget.Toast.makeText(requireContext(), it, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+        
+        viewModel.error.observe(viewLifecycleOwner) { error ->
+            error?.let {
+                android.widget.Toast.makeText(requireContext(), "Error: $it", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
     
     override fun onStart() {
@@ -120,14 +133,19 @@ class EditUserDialog : DialogFragment() {
                 itemsClaimed = itemsClaimed
             )
             
-            // Populate fields
-            EditTextUtils.safeSetText(etDisplayName, displayName)
+            // Populate fields using post to avoid InputConnection issues
+            etDisplayName.post {
+                etDisplayName.setText(displayName)
+                etDisplayName.setSelection(displayName.length)
+            }
             
             // Select appropriate role radio button - Requirement 10.3
-            when (role) {
-                UserRole.STUDENT -> rbStudent.isChecked = true
-                UserRole.SECURITY -> rbSecurity.isChecked = true
-                UserRole.ADMIN -> rbAdmin.isChecked = true
+            rgRole.post {
+                when (role) {
+                    UserRole.STUDENT -> rbStudent.isChecked = true
+                    UserRole.SECURITY -> rbSecurity.isChecked = true
+                    UserRole.ADMIN -> rbAdmin.isChecked = true
+                }
             }
         }
     }
@@ -143,7 +161,10 @@ class EditUserDialog : DialogFragment() {
     }
     
     private fun saveUserDetails() {
-        val user = currentUser ?: return
+        val user = currentUser ?: run {
+            android.widget.Toast.makeText(requireContext(), "Error: User data not loaded", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
         
         // Get updated values
         val newDisplayName = etDisplayName.text.toString().trim()
@@ -166,9 +187,7 @@ class EditUserDialog : DialogFragment() {
         
         // Check if anything changed
         if (newDisplayName == user.displayName && newRole == user.role) {
-            view?.let { v ->
-                Snackbar.make(v, "No changes to save", Snackbar.LENGTH_SHORT).show()
-            }
+            android.widget.Toast.makeText(requireContext(), "No changes to save", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -183,8 +202,13 @@ class EditUserDialog : DialogFragment() {
             updates["role"] = newRole.name
         }
         
+        android.util.Log.d("EditUserDialog", "Saving user ${user.uid} with updates: $updates")
+        
         // Update user details via ViewModel
         viewModel.updateUserDetailsEnhanced(user.uid, updates)
+        
+        // Show progress
+        android.widget.Toast.makeText(requireContext(), "Saving changes...", android.widget.Toast.LENGTH_SHORT).show()
         
         // Dismiss dialog
         dismiss()

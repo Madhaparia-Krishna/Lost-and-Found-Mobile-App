@@ -18,7 +18,8 @@ class ItemsAdapter(
     private val currentUserId: String = "",
     private val userEmail: String = "",
     private val onClaimClickListener: ((LostFoundItem) -> Unit)? = null,
-    private val pendingClaimItemIds: Set<String> = emptySet()
+    private val pendingClaimItemIds: Set<String> = emptySet(),
+    private val onItemClickListener: ((LostFoundItem) -> Unit)? = null
 ) : ListAdapter<LostFoundItem, ItemsAdapter.ItemViewHolder>(ItemDiffCallback()) {
 
     // It's more efficient to create the SimpleDateFormat instance once
@@ -38,7 +39,8 @@ class ItemsAdapter(
             currentUserId, 
             canViewSensitiveInfo,
             onClaimClickListener,
-            pendingClaimItemIds
+            pendingClaimItemIds,
+            onItemClickListener
         )
     }
 
@@ -57,10 +59,23 @@ class ItemsAdapter(
             currentUserId: String,
             canViewSensitiveInfo: Boolean,
             onClaimClickListener: ((LostFoundItem) -> Unit)?,
-            pendingClaimItemIds: Set<String>
+            pendingClaimItemIds: Set<String>,
+            onItemClickListener: ((LostFoundItem) -> Unit)?
         ) {
+            // Set click listener for the entire item view
+            itemView.setOnClickListener {
+                onItemClickListener?.invoke(item)
+            }
+            
             tvItemName.text = item.name
-            tvItemStatus.text = if (item.isLost) "Lost" else "Found"
+            
+            // Show "Returned" status if item is returned, otherwise show Lost/Found
+            val displayStatus = if (item.status.equals("Returned", ignoreCase = true)) {
+                "Returned"
+            } else {
+                if (item.isLost) "Lost" else "Found"
+            }
+            tvItemStatus.text = displayStatus
 
             // Role-based visibility for sensitive fields
             // Requirements: 10.1, 10.2, 10.3, 10.4, 10.5
@@ -85,10 +100,17 @@ class ItemsAdapter(
 
             // Set status background color
             val context = itemView.context
-            if (item.isLost) {
-                tvItemStatus.setBackgroundColor(context.getColor(R.color.lost_tag))
-            } else {
-                tvItemStatus.setBackgroundColor(context.getColor(R.color.found_tag))
+            when {
+                item.status.equals("Returned", ignoreCase = true) -> {
+                    // Use purple color for returned items
+                    tvItemStatus.setBackgroundColor(context.getColor(R.color.status_returned))
+                }
+                item.isLost -> {
+                    tvItemStatus.setBackgroundColor(context.getColor(R.color.lost_tag))
+                }
+                else -> {
+                    tvItemStatus.setBackgroundColor(context.getColor(R.color.found_tag))
+                }
             }
 
             // Load image using Glide with optimized settings

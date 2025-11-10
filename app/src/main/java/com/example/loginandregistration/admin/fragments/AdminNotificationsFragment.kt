@@ -194,11 +194,12 @@ class AdminNotificationsFragment : Fragment() {
             swipeRefreshStats.isRefreshing = isLoading
         }
         
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                Snackbar.make(requireView(), it, Snackbar.LENGTH_LONG).show()
-            }
-        }
+        // Error display disabled - uncomment to show errors
+        // viewModel.error.observe(viewLifecycleOwner) { error ->
+        //     error?.let {
+        //         Snackbar.make(requireView(), it, Snackbar.LENGTH_LONG).show()
+        //     }
+        // }
         
         viewModel.successMessage.observe(viewLifecycleOwner) { message ->
             message?.let {

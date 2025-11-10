@@ -127,7 +127,10 @@ class MyRequestsTabFragment : Fragment(), SearchableFragment {
         
         val userId = currentUser.uid
         
-        // Query claim requests filtered by current user
+        // Log the current user ID for debugging
+        Log.d(TAG, "Loading claim requests for userId: $userId")
+        
+        // Query only the current user's claim requests
         // Requirements: 6.5
         val listener = db.collection("claimRequests")
             .whereEqualTo("userId", userId)

@@ -17,10 +17,8 @@ import com.example.loginandregistration.admin.models.EnhancedLostFoundItem
 import com.example.loginandregistration.admin.viewmodel.AdminDashboardViewModel
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import com.example.loginandregistration.utils.EditTextUtils
 
 /**
  * Dialog for editing item details
@@ -76,6 +74,7 @@ class EditItemDialog : DialogFragment() {
         initViews(view)
         setupCategoryDropdown()
         populateFields()
+        observeViewModel()
         
         return MaterialAlertDialogBuilder(requireContext())
             .setTitle("Edit Item")
@@ -85,6 +84,20 @@ class EditItemDialog : DialogFragment() {
             }
             .setNegativeButton("Cancel", null)
             .create()
+    }
+    
+    private fun observeViewModel() {
+        viewModel.successMessage.observe(this) { message ->
+            message?.let {
+                android.widget.Toast.makeText(requireContext(), it, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+        
+        viewModel.error.observe(this) { error ->
+            error?.let {
+                android.widget.Toast.makeText(requireContext(), "Error: $it", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
     
     private fun initViews(view: View) {
@@ -121,17 +134,33 @@ class EditItemDialog : DialogFragment() {
     
     private fun populateFields() {
         currentItem?.let { item ->
-            EditTextUtils.safeSetText(etItemName, item.name)
-            EditTextUtils.safeSetText(etItemDescription, item.description)
-            EditTextUtils.safeSetText(etItemLocation, item.location)
-            EditTextUtils.safeSetText(etItemContact, item.contactInfo)
-            actvCategory.setText(item.category, false)
+            // Use post to avoid InputConnection issues
+            etItemName.post {
+                etItemName.setText(item.name)
+                etItemName.setSelection(item.name.length)
+            }
+            etItemDescription.post {
+                etItemDescription.setText(item.description)
+                etItemDescription.setSelection(item.description.length)
+            }
+            etItemLocation.post {
+                etItemLocation.setText(item.location)
+                etItemLocation.setSelection(item.location.length)
+            }
+            etItemContact.post {
+                etItemContact.setText(item.contactInfo)
+                etItemContact.setSelection(item.contactInfo.length)
+            }
+            actvCategory.post {
+                actvCategory.setText(item.category, false)
+            }
             
             // Load current image
             if (item.imageUrl.isNotEmpty()) {
                 Glide.with(this)
                     .load(item.imageUrl)
                     .placeholder(R.drawable.ic_image_placeholder)
+                    .error(R.drawable.ic_image_placeholder)
                     .centerCrop()
                     .into(ivItemImage)
             }
@@ -139,7 +168,10 @@ class EditItemDialog : DialogFragment() {
     }
     
     private fun saveChanges() {
-        val item = currentItem ?: return
+        val item = currentItem ?: run {
+            android.widget.Toast.makeText(requireContext(), "Error: Item data not loaded", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
         
         // Validate inputs
         val name = etItemName.text.toString().trim()
@@ -149,22 +181,22 @@ class EditItemDialog : DialogFragment() {
         val category = actvCategory.text.toString().trim()
         
         if (name.isEmpty()) {
-            Snackbar.make(requireView(), "Item name is required", Snackbar.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(requireContext(), "Item name is required", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
         
         if (description.isEmpty()) {
-            Snackbar.make(requireView(), "Description is required", Snackbar.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(requireContext(), "Description is required", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
         
         if (location.isEmpty()) {
-            Snackbar.make(requireView(), "Location is required", Snackbar.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(requireContext(), "Location is required", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
         
         if (category.isEmpty()) {
-            Snackbar.make(requireView(), "Category is required", Snackbar.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(requireContext(), "Category is required", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -174,8 +206,7 @@ class EditItemDialog : DialogFragment() {
             "description" to description,
             "location" to location,
             "contactInfo" to contact,
-            "category" to category,
-            "lastModifiedAt" to System.currentTimeMillis()
+            "category" to category
         )
         
         // If image was changed, handle image upload
@@ -186,7 +217,12 @@ class EditItemDialog : DialogFragment() {
             // updates["imageUrl"] = downloadUrl
         }
         
+        android.util.Log.d("EditItemDialog", "Saving item ${item.id} with updates: $updates")
+        
         // Update item
         viewModel.updateItemDetailsEnhanced(item.id, updates)
+        
+        // Show progress
+        android.widget.Toast.makeText(requireContext(), "Saving changes...", android.widget.Toast.LENGTH_SHORT).show()
     }
 }

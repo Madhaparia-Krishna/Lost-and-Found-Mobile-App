@@ -140,43 +140,95 @@ class AdminRepository {
     // Real-time dashboard stats
     // Requirements: 9.6, 9.7
     fun getDashboardStats(): Flow<DashboardStats> = callbackFlow {
+        Log.d(TAG, "getDashboardStats: Starting dashboard stats flow")
+        
+        // Listen to items collection for real-time updates
         val itemsListener = firestore.collection(ITEMS_COLLECTION)
             .addSnapshotListener { itemsSnapshot, error ->
                 if (error != null) {
-                    // If there's an error or collection doesn't exist, send default stats
+                    Log.e(TAG, "getDashboardStats: Error listening to items - ${error.message}", error)
                     trySend(DashboardStats())
                     return@addSnapshotListener
                 }
                 
-                if (itemsSnapshot != null) {
-                    // Process data on IO thread to avoid blocking main thread
-                    kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            val items = itemsSnapshot.toObjects(LostFoundItem::class.java)
-                            
-                            // Compute stats on background thread
-                            val stats = DashboardStats(
-                                totalItems = items.size,
-                                lostItems = items.count { it.isLost },
-                                foundItems = items.count { !it.isLost },
-                                receivedItems = 0, // This field doesn't exist in current model
-                                pendingItems = 0, // This field doesn't exist in current model
-                                totalUsers = 0, // We'll get this separately
-                                activeUsers = 0,
-                                blockedUsers = 0
-                            )
-                            trySend(stats).isSuccess
-                        } catch (e: Exception) {
-                            // Send default stats if there's an error
-                            trySend(DashboardStats()).isSuccess
+                kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        // Get items count manually to avoid deserialization issues
+                        val itemsCount = itemsSnapshot?.size() ?: 0
+                        var lostCount = 0
+                        var foundCount = 0
+                        
+                        // Count items manually to handle data issues
+                        itemsSnapshot?.documents?.forEach { doc ->
+                            try {
+                                val isLost = doc.getBoolean("isLost") ?: doc.getBoolean("lost found") ?: true
+                                if (isLost) {
+                                    lostCount++
+                                } else {
+                                    foundCount++
+                                }
+                            } catch (e: Exception) {
+                                Log.w(TAG, "getDashboardStats: Failed to parse item ${doc.id}: ${e.message}")
+                            }
                         }
+                        
+                        Log.d(TAG, "getDashboardStats: Found $itemsCount items (Lost: $lostCount, Found: $foundCount)")
+                        
+                        // Fetch current users
+                        val usersSnapshot = firestore.collection(USERS_COLLECTION).get().await()
+                        val users = if (!usersSnapshot.isEmpty) {
+                            usersSnapshot.documents.mapNotNull { doc ->
+                                try {
+                                    val roleString = doc.getString("role") ?: "STUDENT"
+                                    val role = UserRole.fromString(roleString)
+                                    
+                                    AdminUser(
+                                        uid = doc.getString("uid") ?: doc.id,
+                                        email = doc.getString("email") ?: "",
+                                        displayName = doc.getString("displayName") ?: "",
+                                        photoUrl = doc.getString("photoUrl") ?: "",
+                                        role = role,
+                                        isBlocked = doc.getBoolean("isBlocked") ?: false,
+                                        createdAt = com.google.firebase.Timestamp.now(),
+                                        lastLoginAt = null
+                                    )
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "getDashboardStats: Failed to parse user ${doc.id}: ${e.message}")
+                                    null
+                                }
+                            }
+                        } else {
+                            Log.d(TAG, "getDashboardStats: Users collection is empty")
+                            emptyList()
+                        }
+                        
+                        Log.d(TAG, "getDashboardStats: Found ${users.size} users")
+                        
+                        // Compute and send combined stats
+                        val stats = DashboardStats(
+                            totalItems = itemsCount,
+                            lostItems = lostCount,
+                            foundItems = foundCount,
+                            receivedItems = 0,
+                            pendingItems = 0,
+                            totalUsers = users.size,
+                            activeUsers = users.count { !it.isBlocked },
+                            blockedUsers = users.count { it.isBlocked }
+                        )
+                        
+                        Log.d(TAG, "getDashboardStats: Sending stats - Total Items: ${stats.totalItems}, Lost: ${stats.lostItems}, Found: ${stats.foundItems}, Total Users: ${stats.totalUsers}, Active: ${stats.activeUsers}, Blocked: ${stats.blockedUsers}")
+                        trySend(stats).isSuccess
+                    } catch (e: Exception) {
+                        Log.e(TAG, "getDashboardStats: Error processing stats - ${e.message}", e)
+                        trySend(DashboardStats()).isSuccess
                     }
-                } else {
-                    trySend(DashboardStats())
                 }
             }
         
-        awaitClose { itemsListener.remove() }
+        awaitClose { 
+            Log.d(TAG, "getDashboardStats: Closing dashboard stats flow")
+            itemsListener.remove()
+        }
     }
     
     // Get all items with real-time updates
@@ -245,27 +297,51 @@ class AdminRepository {
                     // Process data on IO thread to avoid blocking main thread
                     kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
                         try {
-                            // Manual deserialization to handle role enum mismatches
+                            // Manual deserialization to handle role enum mismatches and timestamp issues
                             val users = snapshot.documents.mapNotNull { doc ->
                                 try {
+                                    // Parse role with fallback for legacy values
                                     val roleString = doc.getString("role") ?: "USER"
                                     val role = UserRole.fromString(roleString)
                                     
+                                    // Parse timestamp - handle both Long and Timestamp types for legacy data
+                                    val createdAt = when (val createdAtField = doc.get("createdAt")) {
+                                        is com.google.firebase.Timestamp -> createdAtField
+                                        is Long -> com.google.firebase.Timestamp(createdAtField / 1000, 0)
+                                        is Number -> com.google.firebase.Timestamp(createdAtField.toLong() / 1000, 0)
+                                        else -> {
+                                            Log.w(TAG, "Invalid createdAt for user ${doc.id}, using current time")
+                                            com.google.firebase.Timestamp.now()
+                                        }
+                                    }
+                                    
+                                    // Parse lastLoginAt - handle both Long and Timestamp types
+                                    val lastLoginAt = when (val lastLoginField = doc.get("lastLoginAt")) {
+                                        is com.google.firebase.Timestamp -> lastLoginField
+                                        is Long -> com.google.firebase.Timestamp(lastLoginField / 1000, 0)
+                                        is Number -> com.google.firebase.Timestamp(lastLoginField.toLong() / 1000, 0)
+                                        null -> null
+                                        else -> {
+                                            Log.w(TAG, "Invalid lastLoginAt for user ${doc.id}")
+                                            null
+                                        }
+                                    }
+                                    
                                     AdminUser(
-                                        uid = doc.getString("uid") ?: "",
+                                        uid = doc.getString("uid") ?: doc.id,
                                         email = doc.getString("email") ?: "",
                                         displayName = doc.getString("displayName") ?: "",
                                         photoUrl = doc.getString("photoUrl") ?: "",
                                         role = role,
                                         isBlocked = doc.getBoolean("isBlocked") ?: false,
-                                        createdAt = doc.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now(),
-                                        lastLoginAt = doc.getTimestamp("lastLoginAt"),
+                                        createdAt = createdAt,
+                                        lastLoginAt = lastLoginAt,
                                         itemsReported = (doc.getLong("itemsReported") ?: 0).toInt(),
                                         itemsFound = (doc.getLong("itemsFound") ?: 0).toInt(),
                                         itemsClaimed = (doc.getLong("itemsClaimed") ?: 0).toInt()
                                     )
                                 } catch (e: Exception) {
-                                    Log.w(TAG, "Failed to deserialize user ${doc.id}: ${e.message}")
+                                    Log.w(TAG, "Failed to deserialize user ${doc.id}: ${e.message}", e)
                                     null
                                 }
                             }
@@ -293,6 +369,11 @@ class AdminRepository {
     suspend fun updateUserBlockStatus(userId: String, isBlocked: Boolean): Result<Unit> {
         return try {
             requireAdminAccess()
+            
+            // Validate user ID to prevent invalid document reference errors
+            if (userId.isBlank()) {
+                return Result.failure(IllegalArgumentException("User ID cannot be blank"))
+            }
             
             firestore.collection(USERS_COLLECTION)
                 .document(userId)
@@ -951,128 +1032,6 @@ class AdminRepository {
             Result.failure(Exception("Failed to search users: ${e.message}"))
         }
     }
-    
-    /**
-     * Get user analytics with caching
-     * Requirements: 1.7
-     */
-    fun getUserAnalytics(): Flow<UserAnalytics> = callbackFlow {
-        try {
-            requireAdminAccess()
-            
-            if (!isAdminUser()) {
-                trySend(UserAnalytics())
-                close()
-                return@callbackFlow
-            }
-            
-            // Check cache first
-            val currentTime = System.currentTimeMillis()
-            if (cachedAnalytics != null && 
-                (currentTime - analyticsCacheTimestamp) < analyticsCacheTimeout) {
-                Log.d(TAG, "Returning cached analytics")
-                trySend(cachedAnalytics!!)
-            }
-            
-            // Listen for real-time updates
-            val listener = firestore.collection(USERS_COLLECTION)
-                .addSnapshotListener { snapshot, error ->
-                    if (error != null) {
-                        Log.e(TAG, "Error getting user analytics", error)
-                        trySend(UserAnalytics())
-                        return@addSnapshotListener
-                    }
-                    
-                    if (snapshot != null) {
-                        // Process analytics on IO thread to avoid blocking main thread
-                        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-                            try {
-                                // Safe deserialization - skip documents that fail to parse
-                                val users = snapshot.documents.mapNotNull { doc ->
-                                    try {
-                                        doc.toObject(EnhancedAdminUser::class.java)
-                                    } catch (e: RuntimeException) {
-                                        Log.w(TAG, "Failed to deserialize user ${doc.id}: ${e.message}")
-                                        null
-                                    }
-                                }
-                                
-                                // Calculate analytics
-                                val totalUsers = users.size
-                                val activeUsers = users.count { !it.isBlocked }
-                                val blockedUsers = users.count { it.isBlocked }
-                                
-                                // Count users by role
-                                val usersByRole = mutableMapOf<UserRole, Int>()
-                                UserRole.values().forEach { role ->
-                                    usersByRole[role] = users.count { it.role == role }
-                                }
-                                
-                                // Calculate new users this month
-                                val calendar = Calendar.getInstance()
-                                calendar.set(Calendar.DAY_OF_MONTH, 1)
-                                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                                calendar.set(Calendar.MINUTE, 0)
-                                calendar.set(Calendar.SECOND, 0)
-                                calendar.set(Calendar.MILLISECOND, 0)
-                                val monthStart = calendar.timeInMillis
-                                
-                                val newUsersThisMonth = users.count { it.createdAt.seconds * 1000 >= monthStart }
-                                
-                                // Calculate average items per user
-                                val totalItems = users.sumOf { 
-                                    it.itemsReported + it.itemsFound + it.itemsClaimed 
-                                }
-                                val averageItemsPerUser = if (totalUsers > 0) {
-                                    totalItems.toFloat() / totalUsers
-                                } else {
-                                    0f
-                                }
-                                
-                                // Get top contributors (users with most items)
-                                val topContributors = users
-                                    .sortedByDescending { 
-                                        it.itemsReported + it.itemsFound + it.itemsClaimed 
-                                    }
-                                    .take(5)
-                                
-                                val analytics = UserAnalytics(
-                                    totalUsers = totalUsers,
-                                    activeUsers = activeUsers,
-                                    blockedUsers = blockedUsers,
-                                    usersByRole = usersByRole,
-                                    newUsersThisMonth = newUsersThisMonth,
-                                    averageItemsPerUser = averageItemsPerUser,
-                                    topContributors = topContributors
-                                )
-                                
-                                // Update cache
-                                cachedAnalytics = analytics
-                                analyticsCacheTimestamp = System.currentTimeMillis()
-                                
-                                Log.d(TAG, "User analytics calculated: $totalUsers total, $activeUsers active")
-                                trySend(analytics).isSuccess
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error calculating analytics", e)
-                                trySend(UserAnalytics()).isSuccess
-                            }
-                        }
-                    } else {
-                        trySend(UserAnalytics())
-                    }
-                }
-            
-            awaitClose { 
-                listener.remove()
-                Log.d(TAG, "User analytics listener removed")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting up user analytics", e)
-            trySend(UserAnalytics())
-            close()
-        }
-    }
-
     // ========== Enhanced Item Management Methods ==========
     // Requirements: 2.2, 2.3, 2.4, 2.5
     
@@ -3746,9 +3705,16 @@ class AdminRepository {
             val topContributors = users
                 .map { user ->
                     val itemCount = itemsByUser[user.uid] ?: 0
-                    user.copy(itemsReported = itemCount)
+                    TopContributor(
+                        userId = user.uid,
+                        userName = user.displayName,
+                        userEmail = user.email,
+                        itemsReported = itemCount,
+                        itemsFound = 0,
+                        totalContributions = itemCount
+                    )
                 }
-                .sortedByDescending { it.itemsReported }
+                .sortedByDescending { it.totalContributions }
                 .take(5)
             
             UserAnalytics(
@@ -3756,8 +3722,6 @@ class AdminRepository {
                 activeUsers = activeUsers,
                 blockedUsers = blockedUsers,
                 usersByRole = usersByRole,
-                newUsersThisMonth = newUsersThisMonth,
-                averageItemsPerUser = averageItemsPerUser,
                 topContributors = topContributors
             )
         }
@@ -4357,5 +4321,147 @@ class AdminRepository {
             Log.e(TAG, "Error deleting test items", e)
             Result.failure(Exception("Failed to delete test items: ${e.message}"))
         }
+    }
+    
+    /**
+     * Get user analytics with real-time data
+     * Requirements: 1.7
+     */
+    fun getUserAnalytics(): Flow<UserAnalytics> = callbackFlow {
+        try {
+            requireAdminAccess()
+            
+            // Check cache first
+            val now = System.currentTimeMillis()
+            if (cachedAnalytics != null && (now - analyticsCacheTimestamp) < analyticsCacheTimeout) {
+                trySend(cachedAnalytics!!)
+                close()
+                return@callbackFlow
+            }
+            
+            Log.d(TAG, "getUserAnalytics: Loading fresh analytics data")
+            
+            // Get all users
+            val usersSnapshot = firestore.collection(USERS_COLLECTION).get().await()
+            val users = usersSnapshot.documents.mapNotNull { doc ->
+                try {
+                    val data = doc.data ?: return@mapNotNull null
+                    AdminUser(
+                        uid = doc.id,
+                        email = data["email"] as? String ?: "",
+                        displayName = data["displayName"] as? String ?: data["name"] as? String ?: "",
+                        photoUrl = data["photoUrl"] as? String ?: "",
+                        role = UserRole.fromString(data["role"] as? String ?: "STUDENT"),
+                        isBlocked = data["isBlocked"] as? Boolean ?: false,
+                        createdAt = data["createdAt"] as? com.google.firebase.Timestamp ?: com.google.firebase.Timestamp.now(),
+                        lastLoginAt = data["lastLoginAt"] as? com.google.firebase.Timestamp,
+                        itemsReported = (data["itemsReported"] as? Number)?.toInt() ?: 0,
+                        itemsFound = (data["itemsFound"] as? Number)?.toInt() ?: 0,
+                        itemsClaimed = (data["itemsClaimed"] as? Number)?.toInt() ?: 0
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error parsing user document ${doc.id}: ${e.message}")
+                    null
+                }
+            }
+            
+            Log.d(TAG, "getUserAnalytics: Loaded ${users.size} users")
+            
+            // Get all items for contribution calculation
+            val itemsSnapshot = firestore.collection(ITEMS_COLLECTION).get().await()
+            val items = itemsSnapshot.documents.mapNotNull { doc ->
+                try {
+                    val data = doc.data ?: return@mapNotNull null
+                    data["userId"] as? String to (data["isLost"] as? Boolean ?: true)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            
+            Log.d(TAG, "getUserAnalytics: Loaded ${items.size} items for contribution calculation")
+            
+            // Calculate statistics
+            val totalUsers = users.size
+            val activeUsers = users.count { !it.isBlocked }
+            val blockedUsers = users.count { it.isBlocked }
+            
+            // Count users by role
+            val usersByRole = mutableMapOf<UserRole, Int>()
+            UserRole.values().forEach { role ->
+                usersByRole[role] = users.count { it.role == role }
+            }
+            
+            Log.d(TAG, "getUserAnalytics: Role distribution - ${usersByRole}")
+            
+            // Calculate top contributors
+            val userContributions = mutableMapOf<String, MutableMap<String, Any>>()
+            
+            // Initialize contribution maps for all users
+            users.forEach { user ->
+                userContributions[user.uid] = mutableMapOf(
+                    "userName" to user.displayName,
+                    "userEmail" to user.email,
+                    "itemsReported" to 0,
+                    "itemsFound" to 0
+                )
+            }
+            
+            // Count contributions from items
+            items.forEach { (userId, isLost) ->
+                if (userId != null && userContributions.containsKey(userId)) {
+                    val contrib = userContributions[userId]!!
+                    if (isLost) {
+                        contrib["itemsReported"] = (contrib["itemsReported"] as Int) + 1
+                    } else {
+                        contrib["itemsFound"] = (contrib["itemsFound"] as Int) + 1
+                    }
+                }
+            }
+            
+            // Create top contributors list
+            val topContributors = userContributions.entries
+                .map { (userId, data) ->
+                    val itemsReported = data["itemsReported"] as Int
+                    val itemsFound = data["itemsFound"] as Int
+                    TopContributor(
+                        userId = userId,
+                        userName = data["userName"] as String,
+                        userEmail = data["userEmail"] as String,
+                        itemsReported = itemsReported,
+                        itemsFound = itemsFound,
+                        totalContributions = itemsReported + itemsFound
+                    )
+                }
+                .filter { it.totalContributions > 0 }
+                .sortedByDescending { it.totalContributions }
+                .take(5)
+            
+            Log.d(TAG, "getUserAnalytics: Top ${topContributors.size} contributors calculated")
+            
+            val analytics = UserAnalytics(
+                totalUsers = totalUsers,
+                activeUsers = activeUsers,
+                blockedUsers = blockedUsers,
+                usersByRole = usersByRole,
+                topContributors = topContributors
+            )
+            
+            // Cache the result
+            cachedAnalytics = analytics
+            analyticsCacheTimestamp = now
+            
+            trySend(analytics)
+            close()
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Security error getting user analytics", e)
+            trySend(UserAnalytics())
+            close(e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting user analytics", e)
+            trySend(UserAnalytics())
+            close(e)
+        }
+        
+        awaitClose { }
     }
 }

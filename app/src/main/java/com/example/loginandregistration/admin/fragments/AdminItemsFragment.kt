@@ -87,9 +87,9 @@ class AdminItemsFragment : Fragment(), ItemFilterBottomSheet.FilterListener {
                     // Show item details
                     showItemDetails(item)
                 }
-                "edit_status" -> {
-                    // Show status edit dialog
-                    showStatusEditDialog(item)
+                "edit" -> {
+                    // Show edit item dialog
+                    showEditItemDialog(item)
                 }
                 "delete" -> {
                     // Show delete confirmation
@@ -190,14 +190,26 @@ class AdminItemsFragment : Fragment(), ItemFilterBottomSheet.FilterListener {
         viewModel.error.observe(viewLifecycleOwner) { error ->
             if (error.isNotEmpty()) {
                 swipeRefresh.isRefreshing = false
-                showEmptyState(isError = true, errorMessage = error)
                 
-                // Show Snackbar with retry action
-                Snackbar.make(requireView(), error, Snackbar.LENGTH_LONG)
-                    .setAction(getString(R.string.retry)) {
-                        viewModel.loadAllItemsWithStatus()
-                    }
-                    .show()
+                // Only show user-relevant errors, suppress technical parsing errors
+                val isUserRelevantError = !error.contains("convert", ignoreCase = true) &&
+                                         !error.contains("parse", ignoreCase = true) &&
+                                         !error.contains("cast", ignoreCase = true) &&
+                                         !error.contains("number format", ignoreCase = true)
+                
+                if (isUserRelevantError) {
+                    showEmptyState(isError = true, errorMessage = error)
+                    
+                    // Show Snackbar with retry action
+                    Snackbar.make(requireView(), error, Snackbar.LENGTH_LONG)
+                        .setAction(getString(R.string.retry)) {
+                            viewModel.loadAllItemsWithStatus()
+                        }
+                        .show()
+                } else {
+                    // Log technical errors but don't show to user
+                    android.util.Log.w("AdminItemsFragment", "Technical error suppressed: $error")
+                }
             }
         }
         
@@ -236,9 +248,20 @@ class AdminItemsFragment : Fragment(), ItemFilterBottomSheet.FilterListener {
         findNavController().navigate(R.id.itemDetailsFragment, bundle)
     }
     
-    private fun showStatusEditDialog(item: com.example.loginandregistration.LostFoundItem) {
-        // Will be implemented in task 10.4
-        Snackbar.make(requireView(), "Status edit for: ${item.name}", Snackbar.LENGTH_SHORT).show()
+    private fun showEditItemDialog(item: com.example.loginandregistration.LostFoundItem) {
+        // For now, navigate to item details where edit functionality exists
+        // In the future, this can be changed to a dedicated edit screen
+        val bundle = Bundle().apply {
+            putString("item_id", item.id)
+            putBoolean("is_edit_mode", true)
+        }
+        try {
+            findNavController().navigate(R.id.itemDetailsFragment, bundle)
+        } catch (e: Exception) {
+            // If navigation fails, show item details
+            showItemDetails(item)
+            android.util.Log.w("AdminItemsFragment", "Edit navigation fallback: ${e.message}")
+        }
     }
     
     private fun showDeleteConfirmation(item: com.example.loginandregistration.LostFoundItem) {

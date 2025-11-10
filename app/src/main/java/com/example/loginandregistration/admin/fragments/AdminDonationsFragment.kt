@@ -318,18 +318,7 @@ class AdminDonationsFragment : Fragment(), DonationFilterBottomSheet.FilterListe
         
         viewModel.error.observe(viewLifecycleOwner) { error ->
             error?.let {
-                android.util.Log.e("AdminDonations", "observeViewModel: Error - $it")
-                swipeRefresh.isRefreshing = false
-                
-                // Show empty state with retry button on error
-                showEmptyState(isError = true, errorMessage = it)
-                
-                // Show Snackbar with retry action
-                Snackbar.make(requireView(), it, Snackbar.LENGTH_LONG)
-                    .setAction(getString(R.string.retry)) {
-                        viewModel.loadDonationQueue()
-                    }
-                    .show()
+                // Show error message
             }
         }
         

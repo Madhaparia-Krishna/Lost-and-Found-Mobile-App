@@ -14,6 +14,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
              (request.auth.token.email == 'admin@gmail.com' ||
+              request.auth.token.email == 'krishna@gmail.com' ||
               (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'Admin', 'admin']));
     }
@@ -52,23 +53,35 @@ service cloud.firestore {
     
     // Items collection rules
     match /items/{itemId} {
-      // All authenticated users can read all items (browse lost and found items)
+      // All authenticated users can read all items regardless of status
+      // This allows browsing of Lost, Found, Returned, Rejected, and Pending items
+      // Requirements: 5.1, 5.2, 5.3, 6.2, 6.3, 6.4
       allow read: if isAuthenticated();
       
       // Users can create items with their own userId OR Security/Admin can create for anyone
-      allow create: if (isAuthenticated() && request.auth.uid == request.resource.data.userId) || 
+      // New items default to "Pending" status until approved by Security/Admin
+      allow create: if (isAuthenticated() && 
+                       request.auth.uid == request.resource.data.userId &&
+                       request.resource.data.status == 'Pending') || 
                        isSecurityOrAdmin();
       
       // Users can update their own items (but not status, approvedBy, approvalDate)
       // Security/Admin can update anything including approval fields
-      allow update: if (isAuthenticated() && resource.data.userId == request.auth.uid && 
+      // Users can only update their own items that are in Pending status
+      allow update: if (isAuthenticated() && 
+                       resource.data.userId == request.auth.uid && 
+                       resource.data.status == 'Pending' &&
                        !('status' in request.resource.data.diff(resource.data).affectedKeys()) &&
                        !('approvedBy' in request.resource.data.diff(resource.data).affectedKeys()) &&
-                       !('approvalDate' in request.resource.data.diff(resource.data).affectedKeys())) || 
+                       !('approvalDate' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('userId' in request.resource.data.diff(resource.data).affectedKeys())) || 
                        isSecurityOrAdmin();
       
-      // Users can delete their own items, Security/Admin can delete any item
-      allow delete: if (isAuthenticated() && resource.data.userId == request.auth.uid) || 
+      // Users can delete their own items only if they are in Pending status
+      // Security/Admin can delete any item regardless of status
+      allow delete: if (isAuthenticated() && 
+                       resource.data.userId == request.auth.uid && 
+                       resource.data.status == 'Pending') || 
                        isSecurityOrAdmin();
     }
     
