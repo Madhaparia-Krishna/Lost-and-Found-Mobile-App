@@ -5,14 +5,22 @@
     <!-- Required for Firebase/Google login -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Required for image upload -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Required for push notifications on Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Required for export file storage -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <!-- Required for media access on Android 13+ (API 33) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- Camera hardware feature - not required to allow installation on devices without camera -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <application
         android:name=".LostFoundApplication"
@@ -29,7 +37,8 @@
         <!-- Login Activity (Launcher) -->
         <activity
             android:name=".Login"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.App.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -44,14 +53,30 @@
         <!-- Main Activity (Dashboard) -->
         <activity
             android:name=".MainActivity"
-            android:exported="true" />
-
+            android:exported="true"
+            android:theme="@style/Theme.App.Starting" />
+        <activity 
+            android:name=".SecurityMainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.App.Starting">
+            <!-- Deep link intent filter for notification actions -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="lostfound"
+                    android:host="notification" />
+            </intent-filter>
+        </activity>
+        
         <!-- Admin Dashboard Activity -->
         <activity
             android:name=".admin.AdminDashboardActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.LoginAndRegistration">
+            android:theme="@style/Theme.App.Starting">
             <!-- Deep link intent filter for admin notification actions -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

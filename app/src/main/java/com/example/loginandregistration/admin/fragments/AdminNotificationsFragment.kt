@@ -19,6 +19,7 @@ import com.example.loginandregistration.admin.viewmodel.AdminDashboardViewModel
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
+import java.util.Locale
 
 /**
  * Fragment for managing push notifications
@@ -193,11 +194,12 @@ class AdminNotificationsFragment : Fragment() {
             swipeRefreshStats.isRefreshing = isLoading
         }
         
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                Snackbar.make(requireView(), it, Snackbar.LENGTH_LONG).show()
-            }
-        }
+        // Error display disabled - uncomment to show errors
+        // viewModel.error.observe(viewLifecycleOwner) { error ->
+        //     error?.let {
+        //         Snackbar.make(requireView(), it, Snackbar.LENGTH_LONG).show()
+        //     }
+        // }
         
         viewModel.successMessage.observe(viewLifecycleOwner) { message ->
             message?.let {
@@ -215,7 +217,7 @@ class AdminNotificationsFragment : Fragment() {
         tvDelivered.text = stats.delivered.toString()
         tvOpened.text = stats.opened.toString()
         tvFailed.text = stats.failed.toString()
-        tvOpenRate.text = String.format("%.1f%%", stats.getOpenRate())
+        tvOpenRate.text = String.format(Locale.getDefault(), "%.1f%%", stats.getOpenRate())
     }
     
     /**

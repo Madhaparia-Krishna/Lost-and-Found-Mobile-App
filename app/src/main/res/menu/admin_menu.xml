@@ -15,11 +15,6 @@
         app:showAsAction="never" />
     
     <item
-        android:id="@+id/action_create_test_data"
-        android:title="Create Test Data"
-        app:showAsAction="never" />
-    
-    <item
         android:id="@+id/action_logout"
         android:title="Logout"
         android:icon="@drawable/ic_logout"

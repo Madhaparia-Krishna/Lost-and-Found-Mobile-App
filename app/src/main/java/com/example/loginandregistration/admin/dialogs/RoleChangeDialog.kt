@@ -28,13 +28,13 @@ class RoleChangeDialog : DialogFragment() {
     private lateinit var tvUserInfo: TextView
     private lateinit var chipCurrentRole: Chip
     private lateinit var rgRoles: RadioGroup
-    private lateinit var rbUser: RadioButton
-    private lateinit var rbModerator: RadioButton
+    private lateinit var rbStudent: RadioButton
+    private lateinit var rbSecurity: RadioButton
     private lateinit var rbAdmin: RadioButton
     private lateinit var btnCancel: MaterialButton
     private lateinit var btnChangeRole: MaterialButton
     
-    private var currentRole: UserRole = UserRole.USER
+    private var currentRole: UserRole = UserRole.STUDENT
     
     companion object {
         private const val ARG_USER_UID = "user_uid"
@@ -83,8 +83,8 @@ class RoleChangeDialog : DialogFragment() {
         tvUserInfo = view.findViewById(R.id.tvUserInfo)
         chipCurrentRole = view.findViewById(R.id.chipCurrentRole)
         rgRoles = view.findViewById(R.id.rgRoles)
-        rbUser = view.findViewById(R.id.rbUser)
-        rbModerator = view.findViewById(R.id.rbModerator)
+        rbStudent = view.findViewById(R.id.rbStudent)
+        rbSecurity = view.findViewById(R.id.rbSecurity)
         rbAdmin = view.findViewById(R.id.rbAdmin)
         btnCancel = view.findViewById(R.id.btnCancel)
         btnChangeRole = view.findViewById(R.id.btnChangeRole)
@@ -96,21 +96,19 @@ class RoleChangeDialog : DialogFragment() {
         val roleString = arguments?.getString(ARG_USER_ROLE) ?: "USER"
         
         currentRole = try {
-            UserRole.valueOf(roleString)
+            UserRole.fromString(roleString)
         } catch (e: Exception) {
-            UserRole.USER
+            UserRole.STUDENT
         }
         
         tvUserInfo.text = "Select a new role for $userName ($userEmail)"
         chipCurrentRole.text = currentRole.name
         chipCurrentRole.setChipBackgroundColorResource(getRoleColor(currentRole))
         
-        // Pre-select current role
+        // Pre-select current role - Requirement 10.3
         when (currentRole) {
-            UserRole.USER -> rbUser.isChecked = true
-            UserRole.STUDENT -> rbUser.isChecked = true // Student defaults to User selection
-            UserRole.MODERATOR -> rbModerator.isChecked = true
-            UserRole.SECURITY -> rbModerator.isChecked = true // Security defaults to Moderator selection
+            UserRole.STUDENT -> rbStudent.isChecked = true
+            UserRole.SECURITY -> rbSecurity.isChecked = true
             UserRole.ADMIN -> rbAdmin.isChecked = true
         }
     }
@@ -126,10 +124,10 @@ class RoleChangeDialog : DialogFragment() {
     }
     
     private fun changeUserRole() {
-        // Get selected role
+        // Get selected role - Requirement 10.3
         val selectedRole = when (rgRoles.checkedRadioButtonId) {
-            R.id.rbUser -> UserRole.USER
-            R.id.rbModerator -> UserRole.MODERATOR
+            R.id.rbStudent -> UserRole.STUDENT
+            R.id.rbSecurity -> UserRole.SECURITY
             R.id.rbAdmin -> UserRole.ADMIN
             else -> null
         }
@@ -185,10 +183,8 @@ class RoleChangeDialog : DialogFragment() {
     private fun getRoleColor(role: UserRole): Int {
         return when (role) {
             UserRole.ADMIN -> R.color.status_lost
-            UserRole.MODERATOR -> R.color.status_pending
             UserRole.SECURITY -> R.color.status_pending
             UserRole.STUDENT -> R.color.status_default
-            UserRole.USER -> R.color.status_default
         }
     }
 }

@@ -21,14 +21,17 @@
         android:icon="@drawable/ic_donation"
         android:title="Donations" />
 
-    <item
-        android:id="@+id/navigation_activity_log"
-        android:icon="@drawable/ic_activity"
-        android:title="Activity" />
-
+    <!-- Notifications feature removed from admin dashboard -->
+    <!--
     <item
         android:id="@+id/navigation_notifications"
         android:icon="@drawable/ic_notifications"
         android:title="Notifications" />
+    -->
+
+    <item
+        android:id="@+id/navigation_profile"
+        android:icon="@drawable/ic_person"
+        android:title="More" />
 
 </menu>

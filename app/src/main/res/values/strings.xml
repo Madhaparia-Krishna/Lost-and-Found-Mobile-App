@@ -11,6 +11,14 @@
     <string name="go_to_register_prompt">Don\'t have an account? Register</string>
     <string name="go_to_login_prompt">Already have an account? Login</string>
     <string name="login_with_google_button">Login with Google</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="forgot_password_title">Reset Password</string>
+    <string name="forgot_password_message">Enter your email address and we\'ll send you a link to reset your password.</string>
+    <string name="send_reset_email">Send Reset Email</string>
+    <string name="cancel">Cancel</string>
+    <string name="password_reset_email_sent">Password reset email sent! Please check your inbox.</string>
+    <string name="password_reset_failed">Failed to send reset email: %1$s</string>
+    <string name="error_empty_email">Please enter your email address.</string>
 
     <!-- Menu Items -->
     <string name="menu_home">Home</string>
@@ -40,6 +48,16 @@
     <string name="contact_info">Contact Information</string>
     <string name="add_photo">Add Photo</string>
     <string name="submit_report">Submit Report</string>
+    <string name="item_category">Category</string>
+    <string name="date_lost_found">Date Lost/Found</string>
+    <string name="select_date">Select date</string>
+    <string name="pick_date">Pick Date</string>
+    <string name="item_photo">Item Photo (Optional)</string>
+    <string name="select_image">Select Image</string>
+    <string name="image_preview">Image preview</string>
+    <string name="uploading_image">Uploading image...</string>
+    <string name="image_upload_failed">Failed to upload image</string>
+    <string name="select_category">Select a category</string>
 
     <!-- Firebase/Google specific -->
     <string name="default_web_client_id" translatable="false">YOUR_DEFAULT_WEB_CLIENT_ID</string>
@@ -65,5 +83,44 @@
     <string name="unknown_error">An unknown error occurred.</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <!-- Report Type Dialog -->
+    <string name="select_report_type">Select Report Type</string>
+    <string name="select_report_type_message">What would you like to report?</string>
+    <string name="report_lost_item">Report Lost Item</string>
+    <string name="report_found_item">Report Found Item</string>
+    <string name="report_item">Report an item</string>
+
+    <!-- Category options -->
+    <string-array name="item_categories">
+        <item>Select a category</item>
+        <item>Electronics</item>
+        <item>Clothing</item>
+        <item>Books</item>
+        <item>Keys</item>
+        <item>Wallet</item>
+        <item>ID Cards</item>
+        <item>Bags</item>
+        <item>Jewelry</item>
+        <item>Other</item>
+    </string-array>
+
+    <!-- Admin Dashboard -->
+    <string name="filter_items">Filter Items</string>
+    <string name="advanced_filters">Advanced Filters</string>
+
+    <!-- Navigation -->
+    <string name="back_button">Navigate back</string>
+
+    <!-- Empty States -->
+    <string name="no_donations">No donations</string>
+    <string name="no_donations_title">No Donations Found</string>
+    <string name="no_donations_message">There are no donations in this category yet.</string>
+    <string name="no_items_title">No Items Found</string>
+    <string name="no_items_message">There are no items matching your criteria.</string>
+    <string name="error_loading_items">Failed to load items</string>
+    <string name="error_loading_donations">Failed to load donations</string>
+    <string name="error_loading_users">Failed to load users</string>
+    <string name="retry">Retry</string>
 
 </resources>

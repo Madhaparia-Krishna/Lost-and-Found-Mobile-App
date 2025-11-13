@@ -28,15 +28,17 @@ class StatusChangeDialog : DialogFragment() {
     private lateinit var etReason: TextInputEditText
     
     private var currentItem: EnhancedLostFoundItem? = null
+    private var onStatusChanged: ((ItemStatus) -> Unit)? = null
     
     companion object {
         private const val ARG_ITEM = "item"
         
-        fun newInstance(item: EnhancedLostFoundItem): StatusChangeDialog {
+        fun newInstance(item: EnhancedLostFoundItem, onStatusChanged: (ItemStatus) -> Unit): StatusChangeDialog {
             return StatusChangeDialog().apply {
                 arguments = Bundle().apply {
                     putSerializable(ARG_ITEM, item)
                 }
+                this.onStatusChanged = onStatusChanged
             }
         }
     }
@@ -161,6 +163,9 @@ class StatusChangeDialog : DialogFragment() {
             .setTitle("Confirm Status Change")
             .setMessage("Are you sure you want to change the status from ${getStatusDisplayName(item.status)} to ${getStatusDisplayName(newStatus)}?")
             .setPositiveButton("Confirm") { _, _ ->
+                // Invoke callback to notify fragment
+                onStatusChanged?.invoke(newStatus)
+                // Also update via ViewModel for backward compatibility
                 viewModel.updateItemStatusEnhanced(item.id, newStatus, reason)
             }
             .setNegativeButton("Cancel", null)

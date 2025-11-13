@@ -137,12 +137,20 @@ class AdminDashboardViewModel : ViewModel() {
         }
     }
     
-    private fun loadAllUsers() {
+    fun loadAllUsers() {
         viewModelScope.launch {
+            android.util.Log.d("AdminDashboardViewModel", "loadAllUsers: Starting to load users")
+            _isLoading.value = true
             repository.getAllUsers()
-                .catch { e -> _error.value = e.message }
+                .catch { e -> 
+                    android.util.Log.e("AdminDashboardViewModel", "loadAllUsers: Error loading users", e)
+                    _error.value = "Failed to load users: ${e.message}"
+                    _isLoading.value = false
+                }
                 .collect { users ->
+                    android.util.Log.d("AdminDashboardViewModel", "loadAllUsers: Loaded ${users.size} users")
                     _allUsers.value = users
+                    _isLoading.value = false
                 }
         }
     }
@@ -217,32 +225,54 @@ class AdminDashboardViewModel : ViewModel() {
         }
     }
     
+    /**
+     * Search items with query - optimized for large lists
+     * Requirements: 9.6, 9.7
+     */
     fun searchItems(query: String) {
         val currentItems = _allItems.value ?: return
-        val filtered = if (query.isBlank()) {
-            currentItems
-        } else {
-            currentItems.filter { item ->
-                item.name.contains(query, ignoreCase = true) ||
-                item.description.contains(query, ignoreCase = true) ||
-                item.location.contains(query, ignoreCase = true) ||
-                item.userEmail.contains(query, ignoreCase = true)
+        
+        // For large lists, perform filtering on background thread
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val filtered = if (query.isBlank()) {
+                currentItems
+            } else {
+                currentItems.filter { item ->
+                    item.name.contains(query, ignoreCase = true) ||
+                    item.description.contains(query, ignoreCase = true) ||
+                    item.location.contains(query, ignoreCase = true) ||
+                    item.userEmail.contains(query, ignoreCase = true)
+                }
+            }
+            
+            // Update LiveData on main thread
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                _filteredItems.value = filtered
             }
         }
-        _filteredItems.value = filtered
     }
     
+    /**
+     * Search users with query - optimized for large lists
+     * Requirements: 9.6, 9.7
+     */
     fun searchUsers(query: String) {
         val currentUsers = _allUsers.value ?: return
-        val filtered = if (query.isBlank()) {
-            currentUsers
-        } else {
-            currentUsers.filter { user ->
-                user.email.contains(query, ignoreCase = true) ||
-                user.displayName.contains(query, ignoreCase = true)
+        
+        // For large lists, perform filtering on background thread
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val filtered = if (query.isBlank()) {
+                currentUsers
+            } else {
+                currentUsers.filter { user ->
+                    user.email.contains(query, ignoreCase = true) ||
+                    user.displayName.contains(query, ignoreCase = true)
+                }
             }
+            
+            // Update LiveData on main thread (if you add filtered users LiveData)
+            // _filteredUsers.value = filtered
         }
-        // You might want to create a separate filtered users LiveData
     }
     
     // ========== Enhanced User Management Methods (Task 8.1) ==========
@@ -355,6 +385,46 @@ class AdminDashboardViewModel : ViewModel() {
     }
     
     /**
+     * Simple updateUser method for basic user updates
+     * Requirements: 7.2, 7.3, 7.4
+     */
+    fun updateUser(userId: String, updates: Map<String, Any>) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.updateUser(userId, updates)
+                .onSuccess {
+                    _successMessage.value = "User updated successfully"
+                    // Refresh all users list
+                    loadAllUsers()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to update user: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Delete a user
+     * Requirements: 6.6, 6.7, 6.11
+     */
+    fun deleteUser(userId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.deleteUser(userId)
+                .onSuccess {
+                    _successMessage.value = "User deleted successfully from Firestore. Note: Firebase Authentication account must be deleted separately."
+                    // Refresh all users list
+                    loadAllUsers()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to delete user: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
      * Search users with query
      * Requirements: 1.9
      */
@@ -433,10 +503,52 @@ class AdminDashboardViewModel : ViewModel() {
     }
     
     /**
+     * Simple updateItem method for basic item updates
+     * Requirements: 7.2, 7.3, 7.4
+     */
+    fun updateItem(itemId: String, updates: Map<String, Any>) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.updateItem(itemId, updates)
+                .onSuccess {
+                    _successMessage.value = "Item updated successfully"
+                    // Refresh all items list
+                    loadAllItems()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to update item: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
      * Update item status with history tracking
      * Requirements: 2.5
      */
     fun updateItemStatusEnhanced(itemId: String, newStatus: ItemStatus, reason: String = "") {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.updateItemStatus(itemId, newStatus, reason)
+                .onSuccess {
+                    _successMessage.value = "Item status updated successfully"
+                    // Refresh item details if currently viewing
+                    loadItemDetails(itemId)
+                    // Refresh all items list
+                    loadAllItemsWithStatus()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to update item status: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Update item status (simplified version for callback usage)
+     * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+     */
+    fun updateItemStatus(itemId: String, newStatus: ItemStatus, reason: String = "") {
         viewModelScope.launch {
             _isLoading.value = true
             repository.updateItemStatus(itemId, newStatus, reason)
@@ -511,82 +623,7 @@ class AdminDashboardViewModel : ViewModel() {
     
     // ========== Donation Management Methods (Task 8.3) ==========
     // Requirements: 3.1-3.9
-    
-    /**
-     * Load donation queue with real-time updates
-     * Requirements: 3.2
-     */
-    fun loadDonationQueue() {
-        viewModelScope.launch {
-            repository.getDonationQueue()
-                .catch { e -> 
-                    _error.value = "Failed to load donation queue: ${e.message}"
-                }
-                .collect { donations ->
-                    _donationQueue.value = donations
-                }
-        }
-    }
-    
-    /**
-     * Mark item as ready for donation
-     * Requirements: 3.4
-     */
-    fun markItemReadyForDonation(itemId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            repository.markItemReadyForDonation(itemId)
-                .onSuccess {
-                    _successMessage.value = "Item marked as ready for donation"
-                    // Refresh donation queue
-                    loadDonationQueue()
-                    // Refresh donation stats
-                    loadDonationStats(DateRange(0, System.currentTimeMillis()))
-                }
-                .onFailure { e ->
-                    _error.value = "Failed to mark item ready for donation: ${e.message}"
-                }
-            _isLoading.value = false
-        }
-    }
-    
-    /**
-     * Mark item as donated with recipient and value
-     * Requirements: 3.5
-     */
-    fun markItemAsDonated(itemId: String, recipient: String, value: Double) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            repository.markItemAsDonated(itemId, recipient, value)
-                .onSuccess {
-                    _successMessage.value = "Item marked as donated successfully"
-                    // Refresh donation queue
-                    loadDonationQueue()
-                    // Refresh donation stats
-                    loadDonationStats(DateRange(0, System.currentTimeMillis()))
-                }
-                .onFailure { e ->
-                    _error.value = "Failed to mark item as donated: ${e.message}"
-                }
-            _isLoading.value = false
-        }
-    }
-    
-    /**
-     * Load donation statistics
-     * Requirements: 3.6, 3.7
-     */
-    fun loadDonationStats(dateRange: DateRange) {
-        viewModelScope.launch {
-            repository.getDonationStats(dateRange)
-                .catch { e -> 
-                    _error.value = "Failed to load donation stats: ${e.message}"
-                }
-                .collect { stats ->
-                    _donationStats.value = stats
-                }
-        }
-    }
+    // Note: Methods moved to avoid duplication - see below after Notification Management section
     
     // ========== Activity Log Methods (Task 8.4) ==========
     // Requirements: 5.1-5.11
@@ -718,6 +755,114 @@ class AdminDashboardViewModel : ViewModel() {
                 }
                 .onFailure { e ->
                     _error.value = "Failed to schedule notification: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    // ========== Donation Management Methods (Task 8.3) ==========
+    // Requirements: 3.1-3.9, 5.1, 5.2, 5.3
+    
+    /**
+     * Load donation queue with real-time updates
+     * Requirements: 3.2, 5.1, 5.2, 5.3
+     */
+    fun loadDonationQueue() {
+        viewModelScope.launch {
+            android.util.Log.d("AdminDashboardViewModel", "loadDonationQueue: Starting to load donations")
+            _isLoading.value = true
+            repository.getDonationQueue()
+                .catch { e -> 
+                    android.util.Log.e("AdminDashboardViewModel", "loadDonationQueue: Error loading donations", e)
+                    _error.value = "Failed to load donation queue: ${e.message}"
+                    _isLoading.value = false
+                }
+                .collect { donations ->
+                    android.util.Log.d("AdminDashboardViewModel", "loadDonationQueue: Loaded ${donations.size} donations")
+                    _donationQueue.value = donations
+                    _isLoading.value = false
+                }
+        }
+    }
+    
+    /**
+     * Mark item as ready for donation
+     * Requirements: 3.4
+     */
+    fun markItemReadyForDonation(itemId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.markItemReadyForDonation(itemId)
+                .onSuccess {
+                    _successMessage.value = "Item marked as ready for donation"
+                    // Refresh donation queue
+                    loadDonationQueue()
+                    // Refresh donation stats
+                    loadDonationStats(DateRange(0, System.currentTimeMillis()))
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to mark item ready for donation: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Mark item as donated with recipient and value
+     * Requirements: 3.5
+     */
+    fun markItemAsDonated(itemId: String, recipient: String, value: Double) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.markItemAsDonated(itemId, recipient, value)
+                .onSuccess {
+                    _successMessage.value = "Item marked as donated successfully"
+                    // Refresh donation queue
+                    loadDonationQueue()
+                    // Refresh donation stats
+                    loadDonationStats(DateRange(0, System.currentTimeMillis()))
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to mark item as donated: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Load donation statistics
+     * Requirements: 3.6, 3.7
+     */
+    fun loadDonationStats(dateRange: DateRange) {
+        viewModelScope.launch {
+            repository.getDonationStats(dateRange)
+                .catch { e -> 
+                    _error.value = "Failed to load donation stats: ${e.message}"
+                }
+                .collect { stats ->
+                    _donationStats.value = stats
+                }
+        }
+    }
+    
+    /**
+     * Automatically flag old items (1+ year old) for donation
+     * Requirements: 3.1, 3.2
+     */
+    fun flagOldItemsForDonation() {
+        viewModelScope.launch {
+            android.util.Log.d("AdminDashboardViewModel", "flagOldItemsForDonation: Starting automatic flagging")
+            _isLoading.value = true
+            repository.checkAndFlagOldItems()
+                .onSuccess { flaggedCount ->
+                    android.util.Log.d("AdminDashboardViewModel", "flagOldItemsForDonation: Flagged $flaggedCount items")
+                    _successMessage.value = "Automatically flagged $flaggedCount items for donation"
+                    // Refresh donation queue to show newly flagged items
+                    loadDonationQueue()
+                }
+                .onFailure { e ->
+                    android.util.Log.e("AdminDashboardViewModel", "flagOldItemsForDonation: Error", e)
+                    _error.value = "Failed to flag old items: ${e.message}"
                 }
             _isLoading.value = false
         }
@@ -856,5 +1001,51 @@ class AdminDashboardViewModel : ViewModel() {
     fun clearExportResult() {
         _exportResult.value = ""
         _exportProgress.value = 0
+    }
+    
+    // ========== Test Data Generation Methods ==========
+    // Requirements: 3.1, 3.2, 3.3
+    
+    /**
+     * Generate old test items for donation workflow testing
+     * Creates items at different ages (365 days, 400 days, 2 years, etc.)
+     * with various statuses for comprehensive testing
+     * Requirements: 3.1, 3.2, 3.3
+     */
+    fun generateOldTestItems() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.generateOldTestItems()
+                .onSuccess { count ->
+                    _successMessage.value = "Successfully generated $count old test items for donation testing"
+                    // Refresh data to show new items
+                    loadDashboardData()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to generate old test items: ${e.message}"
+                }
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Delete all test items created by the test data generator
+     * Useful for cleanup after testing
+     * Requirements: 3.1, 3.2, 3.3
+     */
+    fun deleteTestItems() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.deleteTestItems()
+                .onSuccess { count ->
+                    _successMessage.value = "Successfully deleted $count test items"
+                    // Refresh data to reflect deletion
+                    loadDashboardData()
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to delete test items: ${e.message}"
+                }
+            _isLoading.value = false
+        }
     }
 }

@@ -87,8 +87,8 @@ class ExportHistoryAdapter(
         private fun formatFileSize(sizeInBytes: Long): String {
             return when {
                 sizeInBytes < 1024 -> "$sizeInBytes B"
-                sizeInBytes < 1024 * 1024 -> String.format("%.2f KB", sizeInBytes / 1024f)
-                else -> String.format("%.2f MB", sizeInBytes / (1024f * 1024f))
+                sizeInBytes < 1024 * 1024 -> String.format(Locale.getDefault(), "%.2f KB", sizeInBytes / 1024f)
+                else -> String.format(Locale.getDefault(), "%.2f MB", sizeInBytes / (1024f * 1024f))
             }
         }
 

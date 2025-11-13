@@ -1,17 +1,19 @@
 package com.example.loginandregistration.admin.models
 
+import com.google.firebase.firestore.IgnoreExtraProperties
 import java.io.Serializable
 
 /**
  * Activity log model for comprehensive system audit trail
  * Requirements: 5.1, 5.2
  */
+@IgnoreExtraProperties
 data class ActivityLog(
     val id: String = "",
     val timestamp: Long = System.currentTimeMillis(),
     val actorId: String = "",
     val actorEmail: String = "",
-    val actorRole: UserRole = UserRole.USER,
+    val actorRole: UserRole = UserRole.STUDENT,
     val actionType: ActionType = ActionType.USER_LOGIN,
     val targetType: TargetType = TargetType.SYSTEM,
     val targetId: String = "",
@@ -87,6 +89,7 @@ enum class ActionType {
     USER_UNBLOCK,
     USER_ROLE_CHANGE,
     USER_EDIT,
+    USER_DELETE,
     ITEM_EDIT,
     ITEM_STATUS_CHANGE,
     ITEM_DELETE,
@@ -106,7 +109,7 @@ enum class ActionType {
      */
     fun isAdminAction(): Boolean {
         return this in listOf(
-            USER_BLOCK, USER_UNBLOCK, USER_ROLE_CHANGE, USER_EDIT,
+            USER_BLOCK, USER_UNBLOCK, USER_ROLE_CHANGE, USER_EDIT, USER_DELETE,
             ITEM_EDIT, ITEM_STATUS_CHANGE, ITEM_DELETE,
             DONATION_MARK_READY, DONATION_COMPLETE,
             NOTIFICATION_SEND, DATA_EXPORT
@@ -138,6 +141,7 @@ enum class ActionType {
             USER_UNBLOCK -> "User Unblocked"
             USER_ROLE_CHANGE -> "User Role Changed"
             USER_EDIT -> "User Edited"
+            USER_DELETE -> "User Deleted"
             ITEM_EDIT -> "Item Edited"
             ITEM_STATUS_CHANGE -> "Item Status Changed"
             ITEM_DELETE -> "Item Deleted"

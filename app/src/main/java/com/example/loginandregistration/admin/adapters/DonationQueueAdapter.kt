@@ -50,6 +50,8 @@ class DonationQueueAdapter(
         private val tvItemAge: TextView = itemView.findViewById(R.id.tvItemAge)
         private val tvEligibilityDate: TextView = itemView.findViewById(R.id.tvEligibilityDate)
         private val chipStatus: Chip = itemView.findViewById(R.id.chipStatus)
+        private val chipAgeIndicator: Chip? = itemView.findViewById(R.id.chipAgeIndicator)
+        private val tvDonatedDate: TextView? = itemView.findViewById(R.id.tvDonatedDate)
         private val btnViewDetails: MaterialButton = itemView.findViewById(R.id.btnViewDetails)
         private val btnMarkReady: MaterialButton = itemView.findViewById(R.id.btnMarkReady)
         private val btnMarkDonated: MaterialButton = itemView.findViewById(R.id.btnMarkDonated)
@@ -60,14 +62,36 @@ class DonationQueueAdapter(
             tvItemCategory.text = item.category
             tvItemLocation.text = "📍 ${item.location}"
             
-            // Calculate and display item age
+            // Calculate and display item age with visual indicator for 365+ days
+            // Requirements: 3.3, 3.5
             val ageInDays = item.getAgeInDays()
             val ageText = when {
                 ageInDays < 365 -> "$ageInDays days old"
-                ageInDays < 730 -> "${ageInDays / 365} year old"
-                else -> "${ageInDays / 365} years old"
+                ageInDays < 730 -> {
+                    val years = ageInDays / 365
+                    val remainingDays = ageInDays % 365
+                    "$ageInDays days old ($years year, $remainingDays days)"
+                }
+                else -> {
+                    val years = ageInDays / 365
+                    val remainingDays = ageInDays % 365
+                    "$ageInDays days old ($years years, $remainingDays days)"
+                }
             }
             tvItemAge.text = "Age: $ageText"
+            
+            // Show age badge chip with warning color for items 365+ days old
+            // Requirements: 3.3, 3.5
+            chipAgeIndicator?.let { chip ->
+                if (ageInDays >= 365) {
+                    chip.visibility = View.VISIBLE
+                    chip.text = "365+ days old"
+                    chip.setChipBackgroundColorResource(R.color.warning_orange)
+                    chip.setTextColor(Color.WHITE)
+                } else {
+                    chip.visibility = View.GONE
+                }
+            }
             
             // Display eligibility date
             val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
@@ -93,18 +117,34 @@ class DonationQueueAdapter(
             }
             
             // Configure action buttons based on status
+            // Requirements: 3.3, 3.5
             when (item.status) {
                 DonationStatus.PENDING -> {
                     btnMarkReady.visibility = View.VISIBLE
+                    btnMarkReady.text = "Mark for Donation"
                     btnMarkDonated.visibility = View.GONE
+                    tvDonatedDate?.visibility = View.GONE
                 }
                 DonationStatus.READY -> {
                     btnMarkReady.visibility = View.GONE
                     btnMarkDonated.visibility = View.VISIBLE
+                    btnMarkDonated.text = "Mark as Donated"
+                    tvDonatedDate?.visibility = View.GONE
                 }
                 DonationStatus.DONATED -> {
                     btnMarkReady.visibility = View.GONE
                     btnMarkDonated.visibility = View.GONE
+                    // Display donation date for donated items
+                    // Requirements: 3.3, 3.5
+                    tvDonatedDate?.let { tv ->
+                        tv.visibility = View.VISIBLE
+                        if (item.donatedAt > 0) {
+                            val donatedDate = Date(item.donatedAt)
+                            tv.text = "Donated on ${sdf.format(donatedDate)}"
+                        } else {
+                            tv.text = "Donated"
+                        }
+                    }
                 }
             }
             

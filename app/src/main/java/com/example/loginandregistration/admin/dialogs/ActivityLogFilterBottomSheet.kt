@@ -14,6 +14,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
+import com.example.loginandregistration.utils.EditTextUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -120,17 +121,17 @@ class ActivityLogFilterBottomSheet : BottomSheetDialogFragment() {
         // Load date range
         currentFilters["startDate"]?.toLongOrNull()?.let { startDate ->
             startDateMillis = startDate
-            etStartDate.setText(dateFormat.format(Date(startDate)))
+            EditTextUtils.safeSetText(etStartDate, dateFormat.format(Date(startDate)))
         }
         
         currentFilters["endDate"]?.toLongOrNull()?.let { endDate ->
             endDateMillis = endDate
-            etEndDate.setText(dateFormat.format(Date(endDate)))
+            EditTextUtils.safeSetText(etEndDate, dateFormat.format(Date(endDate)))
         }
         
         // Load user email
         currentFilters["userEmail"]?.let { email ->
-            etUserEmail.setText(email)
+            EditTextUtils.safeSetText(etUserEmail, email)
         }
         
         // Load action types
@@ -171,14 +172,14 @@ class ActivityLogFilterBottomSheet : BottomSheetDialogFragment() {
         etStartDate.setOnClickListener {
             showDatePicker { selectedDate ->
                 startDateMillis = selectedDate
-                etStartDate.setText(dateFormat.format(Date(selectedDate)))
+                EditTextUtils.safeSetText(etStartDate, dateFormat.format(Date(selectedDate)))
             }
         }
         
         etEndDate.setOnClickListener {
             showDatePicker { selectedDate ->
                 endDateMillis = selectedDate
-                etEndDate.setText(dateFormat.format(Date(selectedDate)))
+                EditTextUtils.safeSetText(etEndDate, dateFormat.format(Date(selectedDate)))
             }
         }
     }
@@ -216,11 +217,11 @@ class ActivityLogFilterBottomSheet : BottomSheetDialogFragment() {
         // Clear date range
         startDateMillis = 0
         endDateMillis = 0
-        etStartDate.setText("")
-        etEndDate.setText("")
+        EditTextUtils.safeSetText(etStartDate, "")
+        EditTextUtils.safeSetText(etEndDate, "")
         
         // Clear user email
-        etUserEmail.setText("")
+        EditTextUtils.safeSetText(etUserEmail, "")
         
         // Clear action type checkboxes
         cbUserLogin.isChecked = false

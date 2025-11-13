@@ -26,7 +26,7 @@
                 android:layout_height="24dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_report"
-                android:tint="?attr/colorPrimary" />
+                app:tint="?attr/colorPrimary" />
 
         </FrameLayout>
 

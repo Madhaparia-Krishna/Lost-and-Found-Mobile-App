@@ -11,8 +11,8 @@ import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.example.loginandregistration.admin.AdminDashboardActivity
-import com.example.loginandregistration.security.ui.SecurityMainActivity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.SignInClient
@@ -23,6 +23,10 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 class Login : AppCompatActivity() {
 
@@ -30,6 +34,8 @@ class Login : AppCompatActivity() {
     private lateinit var oneTapClient: SignInClient
     private lateinit var signInRequest: BeginSignInRequest
     private lateinit var db: FirebaseFirestore
+    
+    private var keepSplashScreen = true
 
     companion object {
         private const val TAG = "LoginActivity"
@@ -58,7 +64,23 @@ class Login : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install splash screen before calling super.onCreate()
+        val splashScreen = installSplashScreen()
+        
         super.onCreate(savedInstanceState)
+        
+        // Set theme back to regular theme (for Android 11 and below)
+        setTheme(R.style.Theme_LoginAndRegistration)
+        
+        // Set condition to keep splash screen visible
+        splashScreen.setKeepOnScreenCondition { keepSplashScreen }
+        
+        // Launch coroutine to dismiss splash screen after shorter delay
+        lifecycleScope.launch {
+            kotlinx.coroutines.delay(800) // Reduced from 1500ms to 800ms
+            keepSplashScreen = false
+        }
+        
         setContentView(R.layout.activity_login)
 
         auth = Firebase.auth
@@ -80,6 +102,7 @@ class Login : AppCompatActivity() {
         val btnLogin = findViewById<Button>(R.id.btnLogin)
         val tvRegister = findViewById<TextView>(R.id.tvRegister)
         val btnGoogleLogin = findViewById<Button>(R.id.btnGoogleLogin)
+        val tvForgotPassword = findViewById<TextView>(R.id.tvForgotPassword)
 
         btnLogin.setOnClickListener {
             val email = etEmail.text.toString().trim()
@@ -110,6 +133,51 @@ class Login : AppCompatActivity() {
         btnGoogleLogin.setOnClickListener {
             signInWithGoogle()
         }
+
+        tvForgotPassword.setOnClickListener {
+            showForgotPasswordDialog()
+        }
+    }
+
+    private fun showForgotPasswordDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_forgot_password, null)
+        val etResetEmail = dialogView.findViewById<EditText>(R.id.etResetEmail)
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setPositiveButton(R.string.send_reset_email) { _, _ ->
+                val email = etResetEmail.text.toString().trim()
+                if (email.isEmpty()) {
+                    Toast.makeText(this, R.string.error_empty_email, Toast.LENGTH_SHORT).show()
+                } else {
+                    sendPasswordResetEmail(email)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+
+        dialog.show()
+    }
+
+    private fun sendPasswordResetEmail(email: String) {
+        auth.sendPasswordResetEmail(email)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(TAG, "Password reset email sent to: $email")
+                    Toast.makeText(
+                        this,
+                        R.string.password_reset_email_sent,
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Log.w(TAG, "Failed to send password reset email", task.exception)
+                    Toast.makeText(
+                        this,
+                        getString(R.string.password_reset_failed, task.exception?.message ?: getString(R.string.unknown_error)),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
     }
 
     private fun signInWithGoogle() {
@@ -137,7 +205,7 @@ class Login : AppCompatActivity() {
                     val isNewUser = task.result?.additionalUserInfo?.isNewUser ?: false
                     if (isNewUser) {
                         Log.d(TAG, "New user detected, creating Firestore document.")
-                        auth.currentUser?.let { createNewUserDocument(it) }
+                        auth.currentUser?.let { createNewUserDocument(it.uid, it.email) }
                     }
                     // Always check role after signing in
                     checkUserRoleAndRedirect()
@@ -148,66 +216,100 @@ class Login : AppCompatActivity() {
             }
     }
 
-    // --- FIX: Merged into a single, unambiguous function ---
-    private fun checkUserRoleAndRedirect() {
-        val user = auth.currentUser
-        if (user == null) {
-            Log.w(TAG, "checkUserRoleAndRedirect called with no user logged in.")
-            return // No user, so do nothing.
-        }
-
-        db.collection("users").document(user.uid).get()
-            .addOnSuccessListener { document ->
-                if (document != null && document.exists()) {
-                    val role = document.getString("role")
-                    Log.d(TAG, "User role is: $role")
-                    when (role) {
-                        "Admin" -> navigateTo(AdminDashboardActivity::class.java)
-                        "SECURITY" -> navigateTo(SecurityMainActivity::class.java)
-                        "Student" -> navigateTo(MainActivity::class.java)
-                        else -> {
-                            Log.w(TAG, "Role '$role' not recognized. Defaulting to MainActivity.")
-                            navigateTo(MainActivity::class.java)
-                        }
-                    }
-                } else {
-                    Log.w(TAG, "User document does not exist for UID: ${user.uid}. Creating and redirecting.")
-                    createNewUserDocument(user) // Create document for user that exists in Auth but not Firestore
-                    navigateTo(MainActivity::class.java) // Redirect to default student dashboard
-                }
-            }
-            .addOnFailureListener { exception ->
-                Log.e(TAG, "Error getting user role from Firestore", exception)
-                // Fallback to default dashboard on error
-                navigateTo(MainActivity::class.java)
-            }
-    }
-
-    // --- FIX: Merged into a single, unambiguous function ---
-    private fun createNewUserDocument(user: FirebaseUser) {
-        val userMap = hashMapOf(
-            "email" to user.email,
-            "role" to "Student", // New users default to "Student" role
-            "displayName" to user.displayName,
-            "uid" to user.uid,
-            "createdAt" to com.google.firebase.Timestamp.now()
-        )
-
-        db.collection("users").document(user.uid)
-            .set(userMap) // Use set() instead of add() to specify the document ID
-            .addOnSuccessListener {
-                Log.d(TAG, "New user document created/updated in Firestore for UID: ${user.uid}")
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error creating user document in Firestore", e)
-            }
-    }
-
-    private fun <T : Activity> navigateTo(activityClass: Class<out T>) {
-        val intent = Intent(this, activityClass)
+    private fun navigateToDashboard() { // Assuming MainActivity is DashboardActivity
+        val intent = Intent(this, MainActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
-        finish() // Call finish to prevent user from going back to the login screen
+        finish()
+    }
+
+    private fun checkUserRoleAndRedirect() {
+        val currentUser = auth.currentUser ?: return
+        val db = FirebaseFirestore.getInstance()
+        
+        // Use lifecycleScope to launch coroutine on IO dispatcher
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val document = db.collection("users").document(currentUser.uid)
+                    .get()
+                    .await()
+                
+                withContext(Dispatchers.Main) {
+                    if (document.exists()) {
+                        // Check if user is blocked
+                        val isBlocked = document.getBoolean("isBlocked") ?: false
+                        if (isBlocked) {
+                            // User is blocked, sign them out and show error message
+                            auth.signOut()
+                            Toast.makeText(
+                                this@Login,
+                                "Your account has been temporarily suspended",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            Log.w(TAG, "Blocked user attempted to login: ${currentUser.uid}")
+                            return@withContext
+                        }
+                        
+                        // User is not blocked, proceed with role-based navigation
+                        val role = document.getString("role") ?: "USER"
+                        when (role.uppercase()) {
+                            "ADMIN" -> {
+                                val intent = Intent(this@Login, com.example.loginandregistration.admin.AdminDashboardActivity::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                startActivity(intent)
+                                finish()
+                            }
+                            "SECURITY" -> {
+                                val intent = Intent(this@Login, SecurityMainActivity::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                startActivity(intent)
+                                finish()
+                            }
+                            else -> {
+                                navigateToDashboard()
+                            }
+                        }
+                    } else {
+                        // Document doesn't exist, create it
+                        createNewUserDocument(currentUser.uid, currentUser.email)
+                        navigateToDashboard()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Log.e(TAG, "Error checking user role", e)
+                    Toast.makeText(this@Login, "Error checking user role: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun createNewUserDocument(userId: String, email: String?) {
+        val db = FirebaseFirestore.getInstance()
+        
+        // Create User object with available data
+        val user = User(
+            uid = userId,
+            displayName = "", // Empty for existing users, they can update in profile
+            email = email ?: "",
+            phone = "", // Empty for existing users, they can update in profile
+            gender = "",
+            fcmToken = "",
+            createdAt = com.google.firebase.Timestamp.now(),
+            updatedAt = com.google.firebase.Timestamp.now()
+        )
+        
+        // Use lifecycleScope to launch coroutine on IO dispatcher
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                db.collection("users").document(userId)
+                    .set(user)
+                    .await()
+                Log.d(TAG, "User document created successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating user document", e)
+            }
+        }
     }
 
     override fun onStart() {

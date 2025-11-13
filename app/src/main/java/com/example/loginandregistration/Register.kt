@@ -8,9 +8,16 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth // Correct import
 import com.google.firebase.auth.ktx.auth // KTX import for Firebase.auth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase // KTX import for Firebase.auth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 class Register : AppCompatActivity() {
 
@@ -26,37 +33,57 @@ class Register : AppCompatActivity() {
 
         auth = Firebase.auth // Using KTX version
 
+        val etRegName = findViewById<EditText>(R.id.etRegName)
+        val etRegPhone = findViewById<EditText>(R.id.etRegPhone)
         val etRegEmail = findViewById<EditText>(R.id.etRegEmail)
         val etRegPassword = findViewById<EditText>(R.id.etRegPassword)
         val btnRegister = findViewById<Button>(R.id.btnRegister)
         val tvLogin = findViewById<TextView>(R.id.tvLogin)
 
-        // Set text/hint from string resources (assuming these exist)
-        // etRegEmail.hint = getString(R.string.email_hint)
-        // etRegPassword.hint = getString(R.string.password_hint)
-        // btnRegister.text = getString(R.string.register_button)
-        // tvLogin.text = getString(R.string.go_to_login_prompt)
-
         btnRegister.setOnClickListener {
+            val name = etRegName.text.toString().trim()
+            val phone = etRegPhone.text.toString().trim()
             val email = etRegEmail.text.toString().trim()
             val password = etRegPassword.text.toString().trim()
 
-            if (email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, getString(R.string.error_empty_credentials_register), Toast.LENGTH_SHORT).show()
+            // Validate all required fields
+            if (name.isEmpty()) {
+                Toast.makeText(this, "Please enter your name", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
+            if (phone.isEmpty()) {
+                Toast.makeText(this, "Please enter your phone number", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (email.isEmpty()) {
+                Toast.makeText(this, "Please enter your email", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (password.isEmpty()) {
+                Toast.makeText(this, "Please enter a password", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (password.length < 6) {
+                Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Create user with Firebase Authentication
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this) { task ->
                     if (task.isSuccessful) {
                         Log.d(TAG, "createUserWithEmail:success")
-                        Toast.makeText(this, getString(R.string.registration_successful), Toast.LENGTH_SHORT).show()
-                        // Optional: Automatically sign in the user or send verification email
-                        // val user = auth.currentUser
-                        navigateToDashboard() // Changed to navigateToDashboard
+                        val userId = auth.currentUser?.uid ?: return@addOnCompleteListener
+                        
+                        // Create user document in Firestore
+                        createUserDocument(userId, name, phone, email)
                     } else {
                         Log.w(TAG, "createUserWithEmail:failure", task.exception)
-                        Toast.makeText(this, getString(R.string.registration_failed, task.exception?.message ?: getString(R.string.unknown_error)), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, "Registration failed: ${task.exception?.message}", Toast.LENGTH_LONG).show()
                     }
                 }
         }
@@ -65,6 +92,46 @@ class Register : AppCompatActivity() {
             val intent = Intent(this, Login::class.java)
             startActivity(intent)
             finish() // Finish RegisterActivity
+        }
+    }
+
+    private fun createUserDocument(userId: String, name: String, phone: String, email: String) {
+        val db = FirebaseFirestore.getInstance()
+        val user = User(
+            uid = userId,                    // Map to uid
+            displayName = name,              // Map to displayName
+            email = email,
+            phone = phone,
+            photoUrl = "",                   // Empty initially
+            role = "STUDENT",                // Default role - Requirement 10.2
+            isBlocked = false,               // Not blocked by default
+            gender = "",
+            fcmToken = "",
+            createdAt = Timestamp.now(),
+            updatedAt = Timestamp.now(),
+            lastLoginAt = Timestamp.now(),   // Set on registration
+            itemsReported = 0,
+            itemsFound = 0,
+            itemsClaimed = 0
+        )
+        
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                db.collection("users").document(userId)
+                    .set(user)
+                    .await()
+                
+                withContext(Dispatchers.Main) {
+                    Log.d(TAG, "User document created successfully")
+                    Toast.makeText(this@Register, "Registration successful!", Toast.LENGTH_SHORT).show()
+                    navigateToDashboard()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Log.e(TAG, "Error creating user document", e)
+                    Toast.makeText(this@Register, "Error saving user data: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 

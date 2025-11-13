@@ -71,23 +71,6 @@
             android:layout_marginBottom="8dp" />
 
         <com.google.android.material.radiobutton.MaterialRadioButton
-            android:id="@+id/rbModerator"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Moderator"
-            android:padding="12dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Can manage items and moderate content"
-            android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:paddingStart="48dp"
-            android:paddingEnd="12dp"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.radiobutton.MaterialRadioButton
             android:id="@+id/rbAdmin"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

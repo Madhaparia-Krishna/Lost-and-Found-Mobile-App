@@ -213,7 +213,7 @@ class ExportWorker(
         val rows = users.joinToString("\n") { user ->
             "${user.uid},${escapeCsv(user.email)},${escapeCsv(user.displayName)},${user.role.name}," +
             "${if (user.isBlocked) "Blocked" else "Active"},${user.itemsReported},${user.itemsFound}," +
-            "${user.itemsClaimed},${java.util.Date(user.createdAt)}"
+            "${user.itemsClaimed},${user.createdAt.toDate()}"
         }
         return header + rows
     }

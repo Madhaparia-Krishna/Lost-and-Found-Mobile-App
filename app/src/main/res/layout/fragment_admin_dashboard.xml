@@ -81,7 +81,7 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:src="@drawable/ic_analytics"
-                        android:tint="@android:color/white" />
+                        app:tint="@android:color/white" />
 
                     <TextView
                         android:id="@+id/tvTotalItems"
@@ -129,7 +129,7 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:src="@drawable/ic_search"
-                        android:tint="@android:color/white" />
+                        app:tint="@android:color/white" />
 
                     <TextView
                         android:id="@+id/tvLostItems"
@@ -177,7 +177,7 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:src="@drawable/ic_check"
-                        android:tint="@android:color/white" />
+                        app:tint="@android:color/white" />
 
                     <TextView
                         android:id="@+id/tvFoundItems"
@@ -225,7 +225,7 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:src="@drawable/ic_target"
-                        android:tint="@android:color/white" />
+                        app:tint="@android:color/white" />
 
                     <TextView
                         android:id="@+id/tvReceivedItems"
@@ -291,7 +291,7 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:src="@drawable/ic_search"
-                        android:tint="?attr/colorPrimary" />
+                        app:tint="?attr/colorPrimary" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -330,7 +330,7 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:src="@drawable/ic_hourglass"
-                        android:tint="?attr/colorPrimary" />
+                        app:tint="?attr/colorPrimary" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -513,11 +513,11 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Moderators:"
+                        android:text="Security:"
                         android:textSize="14sp" />
 
                     <TextView
-                        android:id="@+id/tvModeratorCount"
+                        android:id="@+id/tvSecurityCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
@@ -535,11 +535,11 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Users:"
+                        android:text="Students:"
                         android:textSize="14sp" />
 
                     <TextView
-                        android:id="@+id/tvUserCount"
+                        android:id="@+id/tvStudentCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"

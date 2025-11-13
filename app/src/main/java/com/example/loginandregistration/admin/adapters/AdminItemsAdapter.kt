@@ -47,7 +47,7 @@ class AdminItemsAdapter(
         private val chipStatus: Chip = itemView.findViewById(R.id.chipStatus)
         private val chipCategory: Chip? = itemView.findViewById(R.id.chipCategory)
         private val btnViewDetails: MaterialButton = itemView.findViewById(R.id.btnViewDetails)
-        private val btnEditStatus: MaterialButton = itemView.findViewById(R.id.btnEditStatus)
+        private val btnEdit: MaterialButton = itemView.findViewById(R.id.btnEdit)
         private val btnDelete: MaterialButton = itemView.findViewById(R.id.btnDelete)
         
         fun bind(item: EnhancedLostFoundItem) {
@@ -76,8 +76,8 @@ class AdminItemsAdapter(
                 }
             }
             
-            // Load image
-            if (item.imageUrl.isNotEmpty()) {
+            // Load image - handle nullable imageUrl properly
+            if (!item.imageUrl.isNullOrEmpty()) {
                 Glide.with(itemView.context)
                     .load(item.imageUrl)
                     .placeholder(R.drawable.ic_image_placeholder)
@@ -107,8 +107,8 @@ class AdminItemsAdapter(
                 onItemAction(basicItem, "view")
             }
             
-            btnEditStatus.setOnClickListener {
-                onItemAction(basicItem, "edit_status")
+            btnEdit.setOnClickListener {
+                onItemAction(basicItem, "edit")
             }
             
             btnDelete.setOnClickListener {
