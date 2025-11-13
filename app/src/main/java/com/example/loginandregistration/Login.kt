@@ -163,7 +163,7 @@ class Login : AppCompatActivity() {
                     Log.d(TAG, "User role is: $role")
                     when (role) {
                         "Admin" -> navigateTo(AdminDashboardActivity::class.java)
-                        "Security" -> navigateTo(SecurityMainActivity::class.java)
+                        "SECURITY" -> navigateTo(SecurityMainActivity::class.java)
                         "Student" -> navigateTo(MainActivity::class.java)
                         else -> {
                             Log.w(TAG, "Role '$role' not recognized. Defaulting to MainActivity.")
