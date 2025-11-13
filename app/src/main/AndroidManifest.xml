@@ -55,21 +55,6 @@
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.App.Starting" />
-        <activity 
-            android:name=".SecurityMainActivity"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.App.Starting">
-            <!-- Deep link intent filter for notification actions -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="lostfound"
-                    android:host="notification" />
-            </intent-filter>
-        </activity>
         
         <!-- Admin Dashboard Activity -->
         <activity

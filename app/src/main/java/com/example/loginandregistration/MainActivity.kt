@@ -298,7 +298,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun navigateToSecurityDashboard() {
-        val intent = Intent(this, SecurityMainActivity::class.java)
+        val intent = Intent(this, com.example.loginandregistration.security.ui.SecurityMainActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()

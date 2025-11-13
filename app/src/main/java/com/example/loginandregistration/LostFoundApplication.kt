@@ -6,6 +6,8 @@ import android.os.StrictMode
 import android.util.Log
 import com.example.loginandregistration.admin.utils.NotificationChannelManager
 import com.example.loginandregistration.firebase.FirebaseManager
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +27,9 @@ class LostFoundApplication : Application() {
         
         try {
             Log.d(TAG, "Application starting...")
+            
+            // Initialize Firebase App Check (must be done before any Firebase usage)
+            initializeAppCheck()
             
             // DISABLED: StrictMode causes excessive logcat noise
             // Only enable when actively debugging specific issues
@@ -53,6 +58,22 @@ class LostFoundApplication : Application() {
         } catch (e: Exception) {
             Log.e(TAG, "Error during application initialization", e)
             // Don't crash the app, just log the error
+        }
+    }
+    
+    /**
+     * Initialize Firebase App Check with Play Integrity provider
+     * This protects your Firebase resources from abuse
+     */
+    private fun initializeAppCheck() {
+        try {
+            val firebaseAppCheck = FirebaseAppCheck.getInstance()
+            firebaseAppCheck.installAppCheckProviderFactory(
+                PlayIntegrityAppCheckProviderFactory.getInstance()
+            )
+            Log.d(TAG, "Firebase App Check initialized with Play Integrity provider")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing Firebase App Check", e)
         }
     }
     

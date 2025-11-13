@@ -260,7 +260,7 @@ class Login : AppCompatActivity() {
                                 finish()
                             }
                             "SECURITY" -> {
-                                val intent = Intent(this@Login, SecurityMainActivity::class.java)
+                                val intent = Intent(this@Login, com.example.loginandregistration.security.ui.SecurityMainActivity::class.java)
                                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 startActivity(intent)
                                 finish()
