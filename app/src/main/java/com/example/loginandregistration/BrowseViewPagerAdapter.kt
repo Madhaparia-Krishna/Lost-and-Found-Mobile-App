@@ -14,12 +14,13 @@ class BrowseViewPagerAdapter(private val parentFragment: Fragment) : FragmentSta
     private val fragmentRefs = mutableMapOf<Int, WeakReference<Fragment>>()
     
     companion object {
-        const val TAB_COUNT = 5
+        const val TAB_COUNT = 6
         const val TAB_LOST = 0
         const val TAB_FOUND = 1
         const val TAB_RETURNED = 2
-        const val TAB_MY_REQUESTS = 3
-        const val TAB_ALL = 4
+        const val TAB_REQUESTED = 3
+        const val TAB_MY_REQUESTS = 4
+        const val TAB_ALL = 5
     }
     
     override fun getItemCount(): Int = TAB_COUNT
@@ -29,6 +30,7 @@ class BrowseViewPagerAdapter(private val parentFragment: Fragment) : FragmentSta
             TAB_LOST -> BrowseTabFragment.newInstance(BrowseTabFragment.TabFilterType.LOST)
             TAB_FOUND -> BrowseTabFragment.newInstance(BrowseTabFragment.TabFilterType.FOUND)
             TAB_RETURNED -> BrowseTabFragment.newInstance(BrowseTabFragment.TabFilterType.RETURNED)
+            TAB_REQUESTED -> BrowseTabFragment.newInstance(BrowseTabFragment.TabFilterType.REQUESTED)
             TAB_MY_REQUESTS -> MyRequestsTabFragment.newInstance()
             TAB_ALL -> BrowseTabFragment.newInstance(BrowseTabFragment.TabFilterType.ALL)
             else -> BrowseTabFragment.newInstance(BrowseTabFragment.TabFilterType.LOST)
@@ -58,6 +60,7 @@ class BrowseViewPagerAdapter(private val parentFragment: Fragment) : FragmentSta
             TAB_LOST -> "Lost Items"
             TAB_FOUND -> "Found Items"
             TAB_RETURNED -> "Returned"
+            TAB_REQUESTED -> "Requested"
             TAB_MY_REQUESTS -> "My Requests"
             TAB_ALL -> "All Items"
             else -> ""

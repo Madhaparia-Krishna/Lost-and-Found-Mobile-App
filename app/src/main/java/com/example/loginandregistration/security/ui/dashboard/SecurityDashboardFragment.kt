@@ -12,11 +12,24 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.loginandregistration.ItemRequest
 import com.example.loginandregistration.R // Make sure this is your app's R file
 import com.example.loginandregistration.databinding.FragmentSecurityDashboardBinding
 import com.example.loginandregistration.models.Report
 import com.example.loginandregistration.security.data.viewmodel.SecurityViewModel
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.charts.PieChart
@@ -37,6 +50,7 @@ class SecurityDashboardFragment : Fragment() {
 
     private val viewModel: SecurityViewModel by viewModels()
     private lateinit var securityReportsAdapter: SecurityReportsAdapter
+    private lateinit var itemRequestsAdapter: ItemRequestAdapter
 
     // We no longer need the getThemeColor function
     // private fun getThemeColor(...) {}
@@ -52,7 +66,9 @@ class SecurityDashboardFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
+        setupItemRequestsRecyclerView()
         observeViewModel()
+        loadItemRequests()
 
         setupFakeLineChart()
         setupFakePieCharts()
@@ -68,6 +84,93 @@ class SecurityDashboardFragment : Fragment() {
             adapter = securityReportsAdapter
             isNestedScrollingEnabled = false
         }
+    }
+
+    private fun setupItemRequestsRecyclerView() {
+        itemRequestsAdapter = ItemRequestAdapter(
+            onApproveClicked = { request -> updateItemRequestStatus(request, ItemRequest.RequestStatus.APPROVED) },
+            onRejectClicked = { request -> updateItemRequestStatus(request, ItemRequest.RequestStatus.REJECTED) }
+        )
+        binding.itemRequestsRecyclerview.apply {
+            layoutManager = LinearLayoutManager(context)
+            adapter = itemRequestsAdapter
+            isNestedScrollingEnabled = false
+        }
+    }
+
+    private fun loadItemRequests() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                getItemRequestsFlow()
+                    .flowOn(Dispatchers.IO)
+                    .catch { e ->
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "Error loading item requests: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .collect { requests ->
+                        withContext(Dispatchers.Main) {
+                            itemRequestsAdapter.submitList(requests)
+                        }
+                    }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to load item requests", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun getItemRequestsFlow() = callbackFlow {
+        val db = FirebaseFirestore.getInstance()
+        val listener = db.collection("itemRequests")
+            .orderBy("requestDate", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    close(e)
+                    return@addSnapshotListener
+                }
+
+                val requests = snapshot?.documents?.mapNotNull { doc ->
+                    try {
+                        doc.toObject(ItemRequest::class.java)?.copy(requestId = doc.id)
+                    } catch (e: Exception) {
+                        null
+                    }
+                } ?: emptyList()
+
+                trySend(requests)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    private fun updateItemRequestStatus(request: ItemRequest, newStatus: String) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            Toast.makeText(requireContext(), "Authentication required", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val db = FirebaseFirestore.getInstance()
+        val updates = hashMapOf<String, Any>(
+            "status" to newStatus,
+            "reviewedBy" to currentUser.email.orEmpty(),
+            "reviewDate" to Timestamp.now()
+        )
+
+        db.collection("itemRequests")
+            .document(request.requestId)
+            .update(updates)
+            .addOnSuccessListener {
+                val message = if (newStatus == ItemRequest.RequestStatus.APPROVED) {
+                    "Request approved successfully"
+                } else {
+                    "Request rejected"
+                }
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(requireContext(), "Failed to update request: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun observeViewModel() {

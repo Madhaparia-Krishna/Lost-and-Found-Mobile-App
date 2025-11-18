@@ -104,6 +104,28 @@ service cloud.firestore {
                        isSecurityOrAdmin();
     }
     
+    // Item Requests collection rules
+    match /itemRequests/{requestId} {
+      // Users can read their own item requests, Security/Admin can read all
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || isSecurityOrAdmin());
+      
+      // Allow list queries for authenticated users (they can only see their own via query filters)
+      allow list: if isAuthenticated();
+      
+      // Users can create item requests with their own userId
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      
+      // Only Security/Admin can update item requests (for approval/rejection)
+      // Users cannot modify their own requests after submission
+      allow update: if isSecurityOrAdmin();
+      
+      // Users can delete their own pending item requests, Security/Admin can delete any
+      allow delete: if (isAuthenticated() && resource.data.userId == request.auth.uid && 
+                       resource.data.status == 'Pending') || 
+                       isSecurityOrAdmin();
+    }
+    
     // Users collection rules
     match /users/{userId} {
       // All authenticated users can read user profiles (needed to see contact info for items)

@@ -279,6 +279,18 @@
 
         </androidx.cardview.widget.CardView>
 
+        <!-- Request Item Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRequestItem"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Request Item"
+            android:textSize="16sp"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp"
+            app:backgroundTint="@color/primary_purple"
+            android:textColor="@android:color/white" />
+
         <!-- Close Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnClose"
@@ -287,8 +299,10 @@
             android:text="Close"
             android:textSize="16sp"
             android:padding="12dp"
-            app:backgroundTint="@color/primary_purple"
-            android:textColor="@android:color/white" />
+            app:backgroundTint="@android:color/transparent"
+            app:strokeColor="@color/primary_purple"
+            app:strokeWidth="2dp"
+            android:textColor="@color/primary_purple" />
 
     </LinearLayout>
 
