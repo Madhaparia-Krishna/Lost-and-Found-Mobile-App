@@ -200,7 +200,32 @@
             </LinearLayout>
         </GridLayout>
 
-        <!-- Section 3: Visual Components / Recent Reports List -->
+        <!-- Section 3: Item Requests -->
+        <TextView
+            style="@style/TextAppearance.MaterialComponents.Subtitle1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="ITEM REQUESTS"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="4dp">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/item_requests_recyclerview"
+                android:layout_width="match_parent"
+                android:layout_height="300dp"
+                android:padding="8dp"
+                tools:listitem="@layout/item_security_report" />
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- Section 4: Recent Reports List -->
         <TextView
             style="@style/TextAppearance.MaterialComponents.Subtitle1"
             android:layout_width="wrap_content"

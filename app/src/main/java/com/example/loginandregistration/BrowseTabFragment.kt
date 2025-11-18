@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 /**
@@ -62,6 +63,7 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
         LOST,    // Lost items with status "Approved"
         FOUND,   // Found items with status "Approved"
         RETURNED, // Items with status "Returned"
+        REQUESTED, // Items that have been requested and approved by security
         ALL      // All items with status "Approved" or "Returned"
     }
     
@@ -122,6 +124,7 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
             TabFilterType.LOST -> "No lost items found"
             TabFilterType.FOUND -> "No found items available"
             TabFilterType.RETURNED -> "No returned items"
+            TabFilterType.REQUESTED -> "No requested items"
             TabFilterType.ALL -> "No items found"
         }
         
@@ -180,7 +183,63 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
         }
         
         val userEmail = currentUser.email ?: ""
+        val userId = currentUser.uid
         Log.d(TAG, "Loading items for filter: $filterType, user: $userEmail")
+        
+        // For REQUESTED tab, we need to get approved item requests first
+        if (filterType == TabFilterType.REQUESTED) {
+            val requestListener = db.collection("itemRequests")
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("status", ItemRequest.RequestStatus.APPROVED)
+                .addSnapshotListener { requestSnapshot, requestError ->
+                    if (requestError != null) {
+                        Log.e(TAG, "Error loading item requests: ${requestError.message}", requestError)
+                        close(requestError)
+                        return@addSnapshotListener
+                    }
+                    
+                    val approvedItemIds = requestSnapshot?.documents?.mapNotNull { doc ->
+                        doc.toObject(ItemRequest::class.java)?.itemId
+                    } ?: emptyList()
+                    
+                    Log.d(TAG, "Found ${approvedItemIds.size} approved item requests")
+                    
+                    if (approvedItemIds.isEmpty()) {
+                        trySend(emptyList())
+                        return@addSnapshotListener
+                    }
+                    
+                    // Now get the actual items
+                    db.collection("items")
+                        .get()
+                        .addOnSuccessListener { itemSnapshot ->
+                            val requestedItems = itemSnapshot.documents.mapNotNull { doc ->
+                                try {
+                                    val item = doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
+                                    if (item != null && approvedItemIds.contains(item.id)) {
+                                        item
+                                    } else {
+                                        null
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error deserializing item ${doc.id}: ${e.message}", e)
+                                    null
+                                }
+                            }
+                            trySend(requestedItems)
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e(TAG, "Error loading items: ${e.message}", e)
+                            close(e)
+                        }
+                }
+            
+            awaitClose { 
+                Log.d(TAG, "Closing requested items flow listener")
+                requestListener.remove() 
+            }
+            return@callbackFlow
+        }
         
         val listener = db.collection("items")
             .orderBy("timestamp", Query.Direction.DESCENDING)
@@ -236,6 +295,10 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
                     TabFilterType.ALL -> {
                         // Show all items regardless of status or isLost
                         allItems
+                    }
+                    TabFilterType.REQUESTED -> {
+                        // This case is handled above
+                        emptyList()
                     }
                 }
                 
@@ -324,6 +387,7 @@ class BrowseTabFragment : Fragment(), SearchableFragment {
                     TabFilterType.LOST -> "No lost items found"
                     TabFilterType.FOUND -> "No found items available"
                     TabFilterType.RETURNED -> "No returned items"
+                    TabFilterType.REQUESTED -> "No requested items"
                     TabFilterType.ALL -> "No items found"
                 }
             }
