@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.firebase.firestore.ktx) // Version managed by Firebase BOM
     implementation(libs.firebase.storage.ktx) // Version managed by Firebase BOM
     implementation(libs.firebase.messaging.ktx) // Version managed by Firebase BOM
+    implementation(libs.firebase.appcheck.playintegrity) // Firebase App Check with Play Integrity
     implementation(libs.glide) // For image loading
     annotationProcessor(libs.glide.compiler) // Glide annotation processor
     
